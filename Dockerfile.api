@@ -1,0 +1,6 @@
+FROM python:3.9
+RUN pip install psycopg2 flask waitress
+COPY src/python /app
+WORKDIR /app
+ENTRYPOINT ["/usr/local/bin/python"]
+CMD ["api.py"]
