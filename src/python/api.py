@@ -1,16 +1,14 @@
 import base64
+import functools
 import os
 import signal
 import sys
-from sql_interface import DB
 
-from flask import Flask, session, jsonify, request
+from sql_interface import DB, PrimaryKey
+from cache import Cache
+from json_flask import JsonFlask
 
-
-# Wrap print() to log to stderr
-_print = print
-def print(*args, **kwargs):
-    _print(*args, file=sys.stderr, **kwargs)
+from flask import session, request, abort
 
 
 # Set up SIGTERM handler
@@ -21,9 +19,18 @@ signal.signal(signal.SIGTERM, sigterm_handler)
 
 
 # Globals
-db = DB("isometric")
+db = DB("isometric", schema={
+    "users": {
+        "user_id": PrimaryKey,
+        "user_name": str,
+        "user_pwhash": bytes,
+    }
+})
+db.validate_schema()
+cache = Cache()
 
-app = Flask(__name__)
+
+app = JsonFlask(__name__)
 app.config.update(
     #SERVER_NAME="isometric.finance",
     SECRET_KEY=os.urandom(16),
@@ -33,11 +40,25 @@ app.config.update(
 
 
 # Routes
-@app.route('/counter', methods=['GET'])
-def counter():
-    print("Counter")
-    session['counter'] = session.get('counter', 0) + 1
-    return jsonify({"potato": "lorem ipsum", "counter": session['counter']})
+@app.json_route('/register')
+def register(username: str, password: str):
+    print("JSON:", request.json)
+    user_id = db.query_one("SELECT user_id FROM users WHERE user_name=%s", (username,))
+    if user_id is not None:
+        return {"status": "username is taken"}, 401
+    user_token = "asdf"
+    return {"status": "logged in", "token": user_token, "id": user_id}
+
+
+@app.json_route('/login')
+def login(username: str, password: str):
+    print("JSON:", request.json)
+    user_id = db.query_one("SELECT user_id FROM users WHERE user_name=%s AND user_pwhash=%s", (username, password.encode('utf-8')))
+    if user_id is None:
+        return {"status": "invalid credentials"}, 401
+    user_token = "asdf"
+    user_id = 5
+    return {"status": "logged in", "token": user_token, "id": user_id}
 
 
 # Start UWSGI server
