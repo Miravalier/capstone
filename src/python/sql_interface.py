@@ -1,3 +1,4 @@
+import functools
 import psycopg2
 from datetime import time, date, datetime, timedelta
 
@@ -6,6 +7,7 @@ PrimaryKey = object()
 
 
 def ensure_connection(func):
+    @functools.wraps(func)
     def _ensure_connection(self, *args, **kwargs):
         if self.connection is None:
             self.connect()
@@ -102,13 +104,11 @@ class DB:
             else:
                 return result
 
-    @ensure_connection
     def execute(self, sql, params=None):
         results = self.query(sql, params)
         self.connection.commit()
         return results
 
-    @ensure_connection
     def execute_one(self, sql, params=None):
         result = self.query_one(sql, params)
         self.connection.commit()

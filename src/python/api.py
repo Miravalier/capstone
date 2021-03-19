@@ -1,14 +1,19 @@
+# Standard lib imports
 import base64
 import functools
+import hashlib
 import os
+import secrets
 import signal
 import sys
+from hmac import compare_digest
 
-from sql_interface import DB, PrimaryKey
-from cache import Cache
-from json_flask import JsonFlask
-
+# Pip dependency imports
 from flask import session, request, abort
+
+# Project imports
+from sql_interface import DB, PrimaryKey
+from json_flask import JsonFlask, UserId
 
 
 # Set up SIGTERM handler
@@ -23,11 +28,11 @@ db = DB("isometric", schema={
     "users": {
         "user_id": PrimaryKey,
         "user_name": str,
-        "user_pwhash": bytes,
+        "user_pw_hash": bytes,
+        "user_pw_salt": bytes,
     }
 })
 db.validate_schema()
-cache = Cache()
 
 
 app = JsonFlask(__name__)
@@ -43,22 +48,53 @@ app.config.update(
 @app.json_route('/register')
 def register(username: str, password: str):
     print("JSON:", request.json)
+    # Generate salt and hash password
+    salt = secrets.token_bytes(16)
+    password_hash = hashlib.scrypt(password.encode('utf-8'), salt=salt, r=16, n=4096, p=1)
+    del password
+    # Check if username is taken
     user_id = db.query_one("SELECT user_id FROM users WHERE user_name=%s", (username,))
     if user_id is not None:
-        return {"status": "username is taken"}, 401
-    user_token = "asdf"
+        return {"error": "username is taken"}, 401
+    # Create a new user in the DB
+    user_id = db.execute_one(
+        "INSERT INTO users (user_name, user_pw_hash, user_pw_salt) VALUES (%s, %s, %s) RETURNING user_id;",
+        (username, password_hash, salt)
+    )
+    # Add user token to cache
+    user_token = secrets.token_urlsafe(16)
+    app.authtoken_cache[user_token] = user_id
+    # Return token and id
     return {"status": "logged in", "token": user_token, "id": user_id}
 
 
 @app.json_route('/login')
 def login(username: str, password: str):
     print("JSON:", request.json)
-    user_id = db.query_one("SELECT user_id FROM users WHERE user_name=%s AND user_pwhash=%s", (username, password.encode('utf-8')))
-    if user_id is None:
-        return {"status": "invalid credentials"}, 401
-    user_token = "asdf"
-    user_id = 5
+    # Lookup correct hash, salt, and id
+    result = db.query_one(
+        "SELECT user_id, user_pw_hash, user_pw_salt FROM users WHERE user_name=%s",
+        (username,)
+    )
+    if result is None:
+        return {"error": "invalid credentials"}, 401
+    user_id, correct_hash, salt = result
+    # Hash password
+    given_hash = hashlib.scrypt(password.encode('utf-8'), salt=salt, r=16, n=4096, p=1)
+    del password
+    # Determine if the hashes match
+    if not compare_digest(correct_hash, given_hash):
+        return {"error": "invalid credentials"}, 401
+    # Add user token to cache
+    user_token = secrets.token_urlsafe(16)
+    app.authtoken_cache[user_token] = user_id
+    # Return token and id
     return {"status": "logged in", "token": user_token, "id": user_id}
+
+
+@app.json_route('/status')
+def status(user_id: UserId):
+    return {"status": "logged in"}
 
 
 # Start UWSGI server

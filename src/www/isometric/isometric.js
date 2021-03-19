@@ -14,6 +14,6 @@ async function apiRequest(endpoint, data)
 $(async function() {
     console.log("Initializing Isometric Finance");
     
-    console.log(await apiRequest('/register', {username: "myname", password: "mypassword"}));
-    console.log(await apiRequest('/login', {username: "myname", password: "mypassword"}));
+    // await apiRequest('/register', {username: "myname", password: "mypassword"});
+    // await apiRequest('/login', {username: "myname", password: "mypassword"});
 })
