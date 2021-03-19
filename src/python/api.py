@@ -75,10 +75,30 @@ app.config.update(
 )
 
 
+# Database Functions
+def budget_permissions(budget_id: int, user_id: int):
+    # Validate permissions
+    permissions = db.query_one("""
+        SELECT permissions FROM budget_permissions
+        WHERE budget_id=%s AND user_id=%s;
+    """, (budget_id, user_id))
+    if permissions is None:
+        return Permissions.NONE
+    else:
+        return permissions
+
+
+def category_in_budget(category_id: int, budget_id: int):
+    category_id = db.query_one("""
+        SELECT category_id from categories
+        WHERE category_id=%s AND budget_id=%s;
+    """, (category_id, budget_id))
+    return category_id is not None
+
+
 # Routes
 @app.json_route
 def register(username: str, password: str):
-    print("JSON:", request.json)
     # Generate salt and hash password
     salt = secrets.token_bytes(16)
     password_hash = hashlib.scrypt(password.encode('utf-8'), salt=salt, r=16, n=4096, p=1)
@@ -101,7 +121,6 @@ def register(username: str, password: str):
 
 @app.json_route
 def login(username: str, password: str):
-    print("JSON:", request.json)
     # Lookup correct hash, salt, and id
     result = db.query_one(
         "SELECT user_id, user_pw_hash, user_pw_salt FROM users WHERE user_name=%s;",
@@ -131,7 +150,10 @@ def status(user_id: UserId):
 @app.json_route
 def budget_create(user_id: UserId, budget_name: str):
     # Validate budget does not exist
-    if db.query_one("SELECT budget_id FROM budgets WHERE budget_name=%s;", (budget_name,)):
+    budget_id = db.query_one("""
+        SELECT budget_id FROM budgets WHERE budget_name=%s;
+    """, (budget_name,))
+    if budget_id is not None:
         return {"error": "budget exists"}, 400
     # Create budget
     budget_id = db.execute_one(
@@ -150,11 +172,7 @@ def budget_create(user_id: UserId, budget_name: str):
 @app.json_route
 def budget_update(user_id: UserId, budget_id: int, budget_name: str):
     # Validate permissions
-    permissions = db.query_one("""
-        SELECT permissions FROM budget_permissions
-        WHERE budget_id=%s AND user_id=%s;
-    """, (budget_id, user_id))
-    if permissions is None or permissions < Permissions.UPDATE:
+    if budget_permissions(budget_id, user_id) < Permissions.UPDATE:
         return {"error": "insufficient permissions"}, 403
     # Perform update
     db.execute("""
@@ -167,11 +185,7 @@ def budget_update(user_id: UserId, budget_id: int, budget_name: str):
 @app.json_route
 def budget_delete(user_id: UserId, budget_id: int):
     # Validate permissions
-    permissions = db.query_one("""
-        SELECT permissions FROM budget_permissions
-        WHERE budget_id=%s AND user_id=%s;
-    """, (budget_id, user_id))
-    if permissions is None or permissions < Permissions.ADMIN:
+    if budget_permissions(budget_id, user_id) < Permissions.ADMIN:
         return {"error": "insufficient permissions"}, 403
     # Perform delete
     db.execute("""
@@ -206,11 +220,7 @@ def budget_list(user_id: UserId):
 @app.json_route
 def category_create(user_id: UserId, budget_id: int, category_name: str):
     # Validate permissions
-    permissions = db.query_one("""
-        SELECT permissions FROM budget_permissions
-        WHERE budget_id=%s AND user_id=%s;
-    """, (budget_id, user_id))
-    if permissions is None or permissions < Permissions.UPDATE:
+    if budget_permissions(budget_id, user_id) < Permissions.UPDATE:
         return {"error": "insufficient permissions"}, 403
     # Validate category does not exist
     category_id = db.query_one("""
@@ -232,11 +242,7 @@ def category_create(user_id: UserId, budget_id: int, category_name: str):
 def category_update(user_id: UserId, budget_id: int,
         category_id: int, category_name: str):
     # Validate permissions
-    permissions = db.query_one("""
-        SELECT permissions FROM budget_permissions
-        WHERE budget_id=%s AND user_id=%s;
-    """, (budget_id, user_id))
-    if permissions is None or permissions < Permissions.UPDATE:
+    if budget_permissions(budget_id, user_id) < Permissions.UPDATE:
         return {"error": "insufficient permissions"}, 403
     # Perform update
     db.execute("""
@@ -250,11 +256,7 @@ def category_update(user_id: UserId, budget_id: int,
 @app.json_route
 def category_delete(user_id: UserId, budget_id: int, category_id: int):
     # Validate permissions
-    permissions = db.query_one("""
-        SELECT permissions FROM budget_permissions
-        WHERE budget_id=%s AND user_id=%s;
-    """, (budget_id, user_id))
-    if permissions is None or permissions < Permissions.ADMIN:
+    if budget_permissions(budget_id, user_id) < Permissions.ADMIN:
         return {"error": "insufficient permissions"}, 403
     # Perform delete
     db.execute("""
@@ -267,11 +269,7 @@ def category_delete(user_id: UserId, budget_id: int, category_id: int):
 @app.json_route
 def category_list(user_id: UserId, budget_id: int):
     # Validate permissions
-    permissions = db.query_one("""
-        SELECT permissions FROM budget_permissions
-        WHERE budget_id=%s AND user_id=%s;
-    """, (budget_id, user_id))
-    if permissions is None or permissions < Permissions.VIEW:
+    if budget_permissions(budget_id, user_id) < Permissions.VIEW:
         return {"error": "insufficient permissions"}, 403
     # Query for categories
     categories = db.query("""
@@ -293,18 +291,10 @@ def category_list(user_id: UserId, budget_id: int):
 def expense_create(user_id: UserId, budget_id: int, category_id: int,
         description: str, expense_amount: Money, expense_date: DateStr):
     # Validate permissions
-    permissions = db.query_one("""
-        SELECT permissions FROM budget_permissions
-        WHERE budget_id=%s AND user_id=%s;
-    """, (budget_id, user_id))
-    if permissions is None or permissions < Permissions.UPDATE:
+    if budget_permissions(budget_id, user_id) < Permissions.UPDATE:
         return {"error": "insufficient permissions"}, 403
     # Validate the given category belongs to the given budget
-    status = db.query_one("""
-        SELECT category_id from categories
-        WHERE category_id=%s AND budget_id=%s;
-    """, (category_id, budget_id))
-    if status is None:
+    if not category_in_budget(category_id, budget_id):
         return {"error": "budget category does not exist"}, 400
     # Create expense
     expense_id = db.execute_one(
@@ -331,18 +321,10 @@ def expense_update(user_id: UserId, budget_id: int,
         category_id: int, expense_id: int,
         description: str, expense_amount: Money, expense_date: DateStr):
     # Validate permissions
-    permissions = db.query_one("""
-        SELECT permissions FROM budget_permissions
-        WHERE budget_id=%s AND user_id=%s;
-    """, (budget_id, user_id))
-    if permissions is None or permissions < Permissions.UPDATE:
+    if budget_permissions(budget_id, user_id) < Permissions.UPDATE:
         return {"error": "insufficient permissions"}, 403
     # Validate the given category belongs to the given budget
-    status = db.query_one("""
-        SELECT category_id from categories
-        WHERE category_id=%s AND budget_id=%s;
-    """, (category_id, budget_id))
-    if status is None:
+    if not category_in_budget(category_id, budget_id):
         return {"error": "budget category does not exist"}, 400
     # Perform update
     db.execute(
@@ -364,18 +346,10 @@ def expense_update(user_id: UserId, budget_id: int,
 def expense_delete(user_id: UserId, budget_id: int,
         category_id: int, expense_id: int):
     # Validate permissions
-    permissions = db.query_one("""
-        SELECT permissions FROM budget_permissions
-        WHERE budget_id=%s AND user_id=%s;
-    """, (budget_id, user_id))
-    if permissions is None or permissions < Permissions.ADMIN:
+    if budget_permissions(budget_id, user_id) < Permissions.ADMIN:
         return {"error": "insufficient permissions"}, 403
     # Validate the given category belongs to the given budget
-    status = db.query_one("""
-        SELECT category_id from categories
-        WHERE category_id=%s AND budget_id=%s;
-    """, (category_id, budget_id))
-    if status is None:
+    if not category_in_budget(category_id, budget_id):
         return {"error": "budget category does not exist"}, 400
     # Perform delete
     db.execute("""
@@ -388,18 +362,10 @@ def expense_delete(user_id: UserId, budget_id: int,
 @app.json_route
 def expense_list(user_id: UserId, budget_id: int, category_id: int):
     # Validate permissions
-    permissions = db.query_one("""
-        SELECT permissions FROM budget_permissions
-        WHERE budget_id=%s AND user_id=%s;
-    """, (budget_id, user_id))
-    if permissions is None or permissions < Permissions.ADMIN:
+    if budget_permissions(budget_id, user_id) < Permissions.VIEW:
         return {"error": "insufficient permissions"}, 403
     # Validate the given category belongs to the given budget
-    status = db.query_one("""
-        SELECT category_id from categories
-        WHERE category_id=%s AND budget_id=%s;
-    """, (category_id, budget_id))
-    if status is None:
+    if not category_in_budget(category_id, budget_id):
         return {"error": "budget category does not exist"}, 400
     # Query for expenses
     expenses = db.query("""
