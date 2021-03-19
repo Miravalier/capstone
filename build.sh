@@ -94,4 +94,4 @@ install www/isometric/isometric.css
 install-directory www/isometric/resources
 
 echo "=== Bringing Containers Up ==="
-docker-compose up --build --force-recreate -d
+docker-compose up --build -d

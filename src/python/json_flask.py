@@ -1,5 +1,6 @@
 import functools
 import inspect
+from datetime import date
 from inspect import Signature, Parameter
 from flask import Flask, abort, request, jsonify
 from cache import Cache
@@ -45,7 +46,7 @@ class JsonFlask(Flask):
 
 class UserId:
     @staticmethod
-    def validate_json(app):
+    def validate_json(app, key):
         user_id = app.authtoken_cache[request.json.get('authtoken', None)]
         if user_id is None:
             response = jsonify({
@@ -53,7 +54,21 @@ class UserId:
             })
             response.status_code = 401
             abort(response)
-        return user_id            
+        return user_id
+
+
+class DateStr:
+    @staticmethod
+    def validate_json(app, key):
+        value = request.json.get(key, None)
+        try:
+            return date.fromisoformat(value)
+        except (TypeError, ValueError):
+            response = jsonify({
+                "error": f"invalid JSON date parameter {key}: '{value}'"
+            })
+            response.status_code = 400
+            abort(response)
 
 
 # JSON schema validator
@@ -75,7 +90,7 @@ def json_endpoint(app: JsonFlask):
             for parameter in parameters.values():
                 # If the type has a "validate_json" function, call that
                 if hasattr(parameter.annotation, 'validate_json'):
-                    arg_value = parameter.annotation.validate_json(app)
+                    arg_value = parameter.annotation.validate_json(app, parameter.name)
                 # Otherwise, if the type has an annotation, make sure it matches
                 elif parameter.annotation is not Parameter.empty:
                     arg_value = request.json.get(parameter.name, None)

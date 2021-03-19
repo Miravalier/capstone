@@ -1,17 +1,30 @@
 import functools
 import psycopg2
 from datetime import time, date, datetime, timedelta
+from decimal import Decimal
+from flask import request, jsonify, abort
 
 
 PrimaryKey = object()
-Money = object()
+
+class Money:
+    @staticmethod
+    def validate_json(app, key):
+        value = request.json.get(key, None)
+        try:
+            return Decimal(value)
+        except (TypeError, ValueError):
+            response = jsonify({
+                "error": f"invalid JSON money parameter {key}: '{value}'"
+            })
+            response.status_code = 400
+            abort(response)
 
 foreign_key_cache = {}
 def ForeignKey(category, primary_key):
     kind = foreign_key_cache.get(category, object())
     foreign_key_cache[category] = kind
     sql_type_conversions[kind] = f"integer REFERENCES {category}({primary_key}) ON DELETE CASCADE"
-    python_type_conversions[sql_type_conversions[kind]] = kind
     return kind
 
 
@@ -41,13 +54,10 @@ sql_type_conversions = {
     Money: "money",
     PrimaryKey: "serial primary key",
 }
-python_type_conversions = {value: key for key, value in sql_type_conversions.items()}
+
 
 def python_to_sql_type(name, python_type):
     return f"{name} {sql_type_conversions[python_type]}"
-
-def sql_to_python_type(sql_type):
-    return python_type_conversions[sql_type]
 
 
 class DB:
