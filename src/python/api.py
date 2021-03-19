@@ -12,7 +12,7 @@ from hmac import compare_digest
 from flask import session, request, abort
 
 # Project imports
-from sql_interface import DB, PrimaryKey
+from sql_interface import DB, PrimaryKey, ForeignKey, Money
 from json_flask import JsonFlask, UserId
 
 
@@ -30,7 +30,31 @@ db = DB("isometric", schema={
         "user_name": str,
         "user_pw_hash": bytes,
         "user_pw_salt": bytes,
+    },
+    "budgets": {
+        "budget_id": PrimaryKey,
+        "budget_name": str,
     }
+    "budget_permissions": {
+        "budget_permission_id": PrimaryKey,
+        "budget_id": ForeignKey("budgets", "budget_id"),
+        "user_id": ForeignKey("users", "user_id"),
+        "permissions": int,
+    }
+    "categories": {
+        "category_id": PrimaryKey,
+        "category_name": str,
+    },
+    "category_permissions": {
+        "category_permission_id": PrimaryKey,
+        "category_id": ForeignKey("categories", "category_id"),
+        "user_id": ForeignKey("users", "user_id"),
+        "permissions": int,
+    },
+    "expenses": {
+        "expense_id": PrimaryKey,
+        "category_id": ForeignKey("categories", "category_id"),
+    },
 })
 db.validate_schema()
 

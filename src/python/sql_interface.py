@@ -4,6 +4,15 @@ from datetime import time, date, datetime, timedelta
 
 
 PrimaryKey = object()
+Money = object()
+
+foreign_key_cache = {}
+def ForeignKey(category, primary_key):
+    kind = foreign_key_cache.get(category, object())
+    foreign_key_cache[category] = kind
+    sql_type_conversions[kind] = f"integer REFERENCES {category}({primary_key}) ON DELETE CASCADE"
+    python_type_conversions[sql_type_conversions[kind]] = kind
+    return kind
 
 
 def ensure_connection(func):
@@ -29,6 +38,7 @@ sql_type_conversions = {
     date: "date",
     datetime: "timestamp",
     timedelta: "interval",
+    Money: "money",
     PrimaryKey: "serial primary key",
 }
 python_type_conversions = {value: key for key, value in sql_type_conversions.items()}
