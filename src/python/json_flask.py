@@ -10,7 +10,7 @@ class JsonFlask(Flask):
         super().__init__(*args, **kwargs)
         self.authtoken_cache = Cache()
 
-    def json_route(*args, **kwargs):
+    def json_route(self, *args, **kwargs):
         """
         Adds a POST endpoint that accepts JSON and returns JSON. Arguments
         are validated by their type annotation - if the annotated type has
@@ -26,11 +26,11 @@ class JsonFlask(Flask):
         unchanged.
         """
         if len(args) == 1 and len(kwargs) == 0 and callable(args[0]):
-            return json_route_raw_decorator(args[0])
+            return self.json_route_raw_decorator(args[0])
         else:
-            return json_route_called_decorator(*args, **kwargs)
+            return self.json_route_called_decorator(*args, **kwargs)
     
-    def json_route_raw_decorator(func):
+    def json_route_raw_decorator(self, func):
         route_decorator = self.route('/' + func.__name__.replace('_', '/'), methods=['POST'])
         json_decorator = json_endpoint(self)
         return route_decorator(json_decorator(func))
