@@ -45,7 +45,7 @@ app.config.update(
 
 
 # Routes
-@app.json_route('/register')
+@app.json_route
 def register(username: str, password: str):
     print("JSON:", request.json)
     # Generate salt and hash password
@@ -55,7 +55,7 @@ def register(username: str, password: str):
     # Check if username is taken
     user_id = db.query_one("SELECT user_id FROM users WHERE user_name=%s", (username,))
     if user_id is not None:
-        return {"error": "username is taken"}, 401
+        return {"error": "username is taken"}, 400
     # Create a new user in the DB
     user_id = db.execute_one(
         "INSERT INTO users (user_name, user_pw_hash, user_pw_salt) VALUES (%s, %s, %s) RETURNING user_id;",
@@ -65,10 +65,10 @@ def register(username: str, password: str):
     user_token = secrets.token_urlsafe(16)
     app.authtoken_cache[user_token] = user_id
     # Return token and id
-    return {"status": "logged in", "token": user_token, "id": user_id}
+    return {"status": "logged in", "token": user_token, "id": user_id}, 201
 
 
-@app.json_route('/login')
+@app.json_route
 def login(username: str, password: str):
     print("JSON:", request.json)
     # Lookup correct hash, salt, and id
@@ -92,7 +92,7 @@ def login(username: str, password: str):
     return {"status": "logged in", "token": user_token, "id": user_id}
 
 
-@app.json_route('/status')
+@app.json_route
 def status(user_id: UserId):
     return {"status": "logged in"}
 

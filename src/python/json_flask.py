@@ -9,8 +9,33 @@ class JsonFlask(Flask):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.authtoken_cache = Cache()
+
+    def json_route(*args, **kwargs):
+        """
+        Adds a POST endpoint that accepts JSON and returns JSON. Arguments
+        are validated by their type annotation - if the annotated type has
+        a validate_json() method, then that method is called to get the value
+        from the incoming JSON request, otherwise the data is taken directly
+        from the json request by parameter name.
+
+        If used as @json_route, adds a JSON api endpoint with a path of
+        /api/<function_name> where the underscores in the function name
+        are replaced with '/'s
+
+        If used as @json_route(...), the parameters are passed to Flask.route
+        unchanged.
+        """
+        if len(args) == 1 and len(kwargs) == 0 and callable(args[0]):
+            return json_route_raw_decorator(args[0])
+        else:
+            return json_route_called_decorator(*args, **kwargs)
+    
+    def json_route_raw_decorator(func):
+        route_decorator = self.route('/' + func.__name__.replace('_', '/'), methods=['POST'])
+        json_decorator = json_endpoint(self)
+        return route_decorator(json_decorator(func))
         
-    def json_route(self, *args, **kwargs):
+    def json_route_called_decorator(self, *args, **kwargs):
         route_decorator = self.route(*args, methods=['POST'], **kwargs)
         json_decorator = json_endpoint(self)
         def json_route_decorator(func):
