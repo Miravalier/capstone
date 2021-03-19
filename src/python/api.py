@@ -96,7 +96,7 @@ def register(username: str, password: str):
     user_token = secrets.token_urlsafe(16)
     app.authtoken_cache[user_token] = user_id
     # Return token and id
-    return {"status": "logged in", "token": user_token, "id": user_id}, 201
+    return {"status": "logged in", "authtoken": user_token, "id": user_id}, 201
 
 
 @app.json_route
@@ -120,7 +120,7 @@ def login(username: str, password: str):
     user_token = secrets.token_urlsafe(16)
     app.authtoken_cache[user_token] = user_id
     # Return token and id
-    return {"status": "logged in", "token": user_token, "id": user_id}
+    return {"status": "logged in", "authtoken": user_token, "id": user_id}
 
 
 @app.json_route
@@ -182,6 +182,28 @@ def budget_delete(user_id: UserId, budget_id: int):
 
 
 @app.json_route
+def budget_list(user_id: UserId):
+    # Get list of budgets
+    budgets = db.query("""
+        SELECT  budgets.budget_id, budgets.budget_name,
+                budget_permissions.permissions
+        FROM budgets JOIN budget_permissions
+        ON budgets.budget_id=budget_permissions.budget_id
+        WHERE budget_permissions.user_id=%s;
+    """, (user_id,))
+    # Convert tuples in array to dictionaries
+    budgets = [
+        {
+            "id": budget_id,
+            "name": name,
+            "permissions": permissions
+        } for budget_id, name, permissions in budgets
+    ]
+    # Return budgets
+    return {"status": "success", "budgets": budgets}
+
+
+@app.json_route
 def category_create(user_id: UserId, budget_id: int, category_name: str):
     # Validate permissions
     permissions = db.query_one("""
@@ -240,6 +262,31 @@ def category_delete(user_id: UserId, budget_id: int, category_id: int):
     """, (budget_id, category_id))
     # Return status
     return {"status": "success"}
+
+
+@app.json_route
+def category_list(user_id: UserId, budget_id: int):
+    # Validate permissions
+    permissions = db.query_one("""
+        SELECT permissions FROM budget_permissions
+        WHERE budget_id=%s AND user_id=%s;
+    """, (budget_id, user_id))
+    if permissions is None or permissions < Permissions.VIEW:
+        return {"error": "insufficient permissions"}, 403
+    # Query for categories
+    categories = db.query("""
+        SELECT category_id, category_name
+        FROM categories WHERE budget_id=%s;
+    """, (budget_id,))
+    # Transform tuples into dictionaries
+    categories = [
+        {
+            "id": category_id,
+            "name": category_name,
+        } for category_id, category_name in categories
+    ]
+    # Return categories
+    return {"status": "success", "categories": categories}
 
 
 @app.json_route
@@ -336,6 +383,42 @@ def expense_delete(user_id: UserId, budget_id: int,
     """, (category_id, expense_id))
     # Return status
     return {"status": "success"}
+
+
+@app.json_route
+def expense_list(user_id: UserId, budget_id: int, category_id: int):
+    # Validate permissions
+    permissions = db.query_one("""
+        SELECT permissions FROM budget_permissions
+        WHERE budget_id=%s AND user_id=%s;
+    """, (budget_id, user_id))
+    if permissions is None or permissions < Permissions.ADMIN:
+        return {"error": "insufficient permissions"}, 403
+    # Validate the given category belongs to the given budget
+    status = db.query_one("""
+        SELECT category_id from categories
+        WHERE category_id=%s AND budget_id=%s;
+    """, (category_id, budget_id))
+    if status is None:
+        return {"error": "budget category does not exist"}, 400
+    # Query for expenses
+    expenses = db.query("""
+        SELECT  expense_id, expense_description, expense_amount,
+                expense_date
+        FROM expenses WHERE category_id=%s;
+    """, (category_id,))
+    # Transform tuples into dictionaries
+    expenses = [
+        {
+            "id": expense_id,
+            "description": expense_description,
+            "amount": str(expense_amount),
+            "date": expense_date.isoformat()
+        } for expense_id, expense_description, \
+            expense_amount, expense_date in expenses
+    ]
+    # Return expenses
+    return {"status": "success", "expenses": expenses}
 
 
 # Start UWSGI server
