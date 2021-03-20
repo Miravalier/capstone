@@ -22,13 +22,16 @@ export class Budget {
 
     async update(name) {
         this._name = name;
-        await apiRequest(
+        const response = await apiRequest(
             "/budget/update",
             {
                 budget_id: this.id,
                 budget_name: name
             }
         );
+        if (response.error) {
+            throw response.error;
+        }
     }
 
     get permissions() {
@@ -97,7 +100,22 @@ export class Budget {
 
         const category = new Category(response.id, this.id, name);
         category._budget = this;
+        if (this._categories !== null) {
+            this._categories.push(category);
+        }
         return category;
+    }
+
+    async delete() {
+        const response = await apiRequest(
+            "/budget/delete",
+            {
+                budget_id: this.id
+            }
+        );
+        if (response.error) {
+            throw response.error;
+        }
     }
 }
 
@@ -117,7 +135,7 @@ export class Category {
 
     async update(name) {
         this._name = name;
-        await apiRequest(
+        const response = await apiRequest(
             "/category/update",
             {
                 budget_id: this.budget_id,
@@ -125,6 +143,9 @@ export class Category {
                 category_name: name
             }
         );
+        if (response.error) {
+            throw response.error;
+        }
     }
 
     async budget() {
@@ -173,7 +194,7 @@ export class Category {
         return categories;
     }
 
-    static async addExpense(description, amount, date) {
+    async addExpense(description, amount, date) {
         const response = await apiRequest(
             "/expense/create",
             {
@@ -194,7 +215,33 @@ export class Category {
         );
         expense._category = this;
         expense._budget = this._budget;
+        if (this._expenses !== null) {
+            this._expenses.push(expense);
+        }
         return expense;
+    }
+
+    async delete() {
+        // Get budget
+        const budget = await this.budget();
+        // Remove category from budget's categories list
+        if (budget._categories !== null) {
+            const index = budget._categories.indexOf(this)
+            if (index != -1) {
+                budget._categories.splice(index, 1);
+            }
+        }
+        // Submit api request
+        const response = await apiRequest(
+            "/category/delete",
+            {
+                budget_id: this.budget_id,
+                category_id: this.id
+            }
+        );
+        if (response.error) {
+            throw response.error;
+        }
     }
 }
 
@@ -227,7 +274,7 @@ export class Expense {
         this._description = description;
         this._amount = amount;
         this._date = date;
-        await apiRequest(
+        const response = await apiRequest(
             "/expense/update",
             {
                 budget_id: this.budget_id,
@@ -238,6 +285,9 @@ export class Expense {
                 expense_date: date
             }
         );
+        if (response.error) {
+            throw response.error;
+        }
     }
 
     async category() {
@@ -288,5 +338,29 @@ export class Expense {
             ));
         });
         return expenses;
+    }
+
+    async delete() {
+        // Get category
+        const category = await this.category();
+        // Remove expense from category's expenses list
+        if (category._expenses !== null) {
+            const index = category._expenses.indexOf(this)
+            if (index != -1) {
+                category._expenses.splice(index, 1);
+            }
+        }
+        // Submit api request
+        const response = await apiRequest(
+            "/expense/delete",
+            {
+                budget_id: this.budget_id,
+                category_id: this.category_id,
+                expense_id: this.id
+            }
+        );
+        if (response.error) {
+            throw response.error;
+        }
     }
 }

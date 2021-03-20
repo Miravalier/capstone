@@ -1,5 +1,6 @@
 import functools
 import psycopg2
+import decimal
 from datetime import time, date, datetime, timedelta
 from decimal import Decimal
 from flask import request, jsonify, abort
@@ -12,8 +13,12 @@ class Money:
     def validate_json(app, key):
         value = request.json.get(key, None)
         try:
+            # Strip $ if present
+            if isinstance(value, str) and value[0] == '$':
+                value = value[1:]
+            # Convert to decimal
             return Decimal(value)
-        except (TypeError, ValueError):
+        except (IndexError, decimal.InvalidOperation):
             response = jsonify({
                 "error": f"invalid JSON money parameter {key}: '{value}'"
             })
