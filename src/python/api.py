@@ -436,7 +436,7 @@ def category_info(user_id: UserId, budget_id: int, category_id: int):
     if name is None:
         return {"error": "category does not exist"}, 400
     # Return info
-    return {"status": "success", "name", name}
+    return {"status": "success", "name": name}
 
 
 @app.json_route

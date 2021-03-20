@@ -1,6 +1,13 @@
 import {apiRequest} from "./api.js";
 
 
+export const PERM_NONE = 0;
+export const PERM_VIEW = 1;
+export const PERM_UPDATE = 2;
+export const PERM_ADMIN = 4;
+export const PERM_OWNER = 8;
+
+
 export class Budget {
     constructor(id, name, permissions) {
         this.id = id;
@@ -65,6 +72,32 @@ export class Budget {
             budgets.push(budget);
         });
         return budgets;
+    }
+
+    static async create(name) {
+        const response = await apiRequest(
+            "/budget/create",
+            {budget_name: name}
+        );
+        if (response.error) {
+            throw response.error;
+        }
+
+        return new Budget(response.id, name, PERM_OWNER);
+    }
+
+    async addCategory(name) {
+        const response = await apiRequest(
+            "/category/create",
+            {budget_id: this.id, category_name: name}
+        );
+        if (response.error) {
+            throw response.error;
+        }
+
+        const category = new Category(response.id, this.id, name);
+        category._budget = this;
+        return category;
     }
 }
 
@@ -138,6 +171,30 @@ export class Category {
             ));
         });
         return categories;
+    }
+
+    static async addExpense(description, amount, date) {
+        const response = await apiRequest(
+            "/expense/create",
+            {
+                budget_id: this.budget_id,
+                category_id: this.id,
+                description: description,
+                expense_amount: amount,
+                expense_date: date
+            }
+        );
+        if (response.error) {
+            throw response.error;
+        }
+
+        const expense = new Expense(
+            response.id, this.id, this.budget_id,
+            description, amount, date
+        );
+        expense._category = this;
+        expense._budget = this._budget;
+        return expense;
     }
 }
 
