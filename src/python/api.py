@@ -96,6 +96,14 @@ def category_in_budget(category_id: int, budget_id: int):
     return category_id is not None
 
 
+def is_valid_user_id(user_id: int):
+    user_id = db.query_one("""
+        SELECT user_id FROM users
+        WHERE user_id=%s;
+    """, (user_id,))
+    return user_id is not None
+
+
 # Routes
 @app.json_route
 def register(username: str, password: str):
@@ -116,7 +124,7 @@ def register(username: str, password: str):
     user_token = secrets.token_urlsafe(16)
     app.authtoken_cache[user_token] = user_id
     # Return token and id
-    return {"status": "logged in", "authtoken": user_token, "id": user_id}, 201
+    return {"status": "success", "authtoken": user_token, "id": user_id}, 201
 
 
 @app.json_route
@@ -139,12 +147,118 @@ def login(username: str, password: str):
     user_token = secrets.token_urlsafe(16)
     app.authtoken_cache[user_token] = user_id
     # Return token and id
-    return {"status": "logged in", "authtoken": user_token, "id": user_id}
+    return {"status": "success", "authtoken": user_token, "id": user_id}
 
 
 @app.json_route
 def status(user_id: UserId):
-    return {"status": "logged in"}
+    return {"status": "success"}
+
+
+@app.json_route
+def budget_permissions_set(user_id: UserId, budget_id: int,
+        recipient_user_id: int, permissions: int):
+    # Lookup permissions
+    user_permissions = budget_permissions(budget_id, user_id)
+    recipient_permissions = budget_permissions(budget_id, recipient_user_id)
+    # Verify that the user is at least an admin
+    if user_permissions < Permissions.ADMIN:
+        return {"error": "insufficient permissions"}, 403
+    # Verify the recipient is a real user
+    if not is_valid_user_id(recipient_user_id):
+        return {"error": "user does not exist"}, 400
+    # Validate the recipients permissions are lower than the user's own
+    if recipient_permissions >= user_permissions:
+        return {"error": "insufficient permissions"}, 403
+    # Validate the permissions being set are lower than the user's own
+    if permissions >= user_permissions:
+        return {"error": "insufficient permissions"}, 403
+    # Set the permissions
+    if permissions == Permissions.NONE:
+        db.execute("""
+            DELETE FROM budget_permissions
+            WHERE budget_id=%s AND user_id=%s;
+        """, (budget_id, recipient_user_id))
+    else:
+        if recipient_permissions == Permissions.NONE:
+            db.execute("""
+                INSERT INTO budget_permissions
+                (budget_id, user_id, permissions)
+                VALUES (%s, %s, %s);
+            """, (budget_id, recipient_user_id, permissions))
+        else:
+            db.execute("""
+                UPDATE budget_permissions SET permissions=%s
+                WHERE budget_id=%s AND user_id=%s;
+            """, (permissions, budget_id, recipient_user_id))
+    # Return status
+    return {"status": "success"}
+
+
+@app.json_route
+def budget_permissions_get(auth_user_id: UserId, budget_id: int,
+        user_id: int):
+    # Lookup permissions
+    user_permissions = budget_permissions(budget_id, auth_user_id)
+    recipient_permissions = budget_permissions(budget_id, user_id)
+    # Verify the user is an admin on this budget
+    if user_permissions < Permissions.ADMIN:
+        return {"error": "insufficient permissions"}, 403
+    # Verify the recipient is a real user
+    if not is_valid_user_id(user_id):
+        return {"error": "user does not exist"}, 400
+    # Return status
+    return {"status": "success", "permissions": recipient_permissions}
+
+
+@app.json_route
+def budget_permissions_transfer(user_id: UserId, budget_id: int,
+        recipient_user_id: int):
+    # Verify user is the owner of the budget
+    if budget_permissions(budget_id, user_id) != Permissions.OWNER:
+        return {"error": "insufficient permissions"}, 403
+    # Verify the recipient is a real user
+    if not is_valid_user_id(recipient_user_id):
+        return {"error": "user does not exist"}, 400
+    # Remove owner privileges from the owner
+    db.execute("""
+        UPDATE budget_permissions SET permissions=%s
+        WHERE budget_id=%s AND user_id=%s;
+    """, (Permissions.ADMIN, budget_id, user_id))
+    # Grant owner privileges to the recipient
+    if budget_permissions(budget_id, recipient_user_id) == Permissions.NONE:
+        db.execute("""
+            INSERT INTO budget_permissions
+            (budget_id, user_id, permissions)
+            VALUES (%s, %s, %s);
+        """, (budget_id, recipient_user_id, Permissions.OWNER))
+    else:
+        db.execute("""
+            UPDATE budget_permissions SET permissions=%s
+            WHERE budget_id=%s AND user_id=%s;
+        """, (Permissions.OWNER, budget_id, recipient_user_id))
+    # Return status
+    return {"status": "success"}
+
+
+@app.json_route
+def budget_permissions_relinquish(user_id: UserId, budget_id: int):
+    # Get user permissions
+    permissions = budget_permissions(budget_id, user_id)
+    # Verify user is not the owner of the budget
+    if permissions == Permissions.OWNER:
+        return {"error": "owner cannot relinquish"}, 400
+    # Verify the user has any permissions to relinquish
+    if permissions == Permissions.NONE:
+        return {"error": "no permissions to relinquish"}, 400
+    # Relinquish permissions
+    db.execute("""
+        DELETE FROM budget_permissions
+        WHERE budget_id=%s AND user_id=%s;
+    """, (budget_id, user_id))
+    # Return status
+    return {"status": "success"}
+
 
 
 @app.json_route
