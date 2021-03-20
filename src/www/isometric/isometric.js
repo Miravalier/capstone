@@ -1,3 +1,5 @@
+import {Budget, Category, Expense} from "./datatypes.js";
+
 // Utility functions
 
 /*

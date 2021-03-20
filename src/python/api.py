@@ -332,6 +332,28 @@ def budget_list(user_id: UserId):
 
 
 @app.json_route
+def budget_info(user_id: UserId, budget_id: int):
+    # Validate permissions
+    if budget_permissions(budget_id, user_id) < Permissions.VIEW:
+        return {"error": "insufficient permissions"}, 403
+    # Get info
+    info = db.query_one(
+        """
+            SELECT budget_name, permissions
+            FROM budgets JOIN budget_permissions
+            ON budgets.budget_id=budget_permissions.budget_id
+            WHERE budgets.budget_id=%s AND budget_permissions.user_id=%s
+        """,
+        (budget_id, user_id)
+    )
+    if info is None:
+        return {"error": "budget does not exist"}, 400
+    name, permissions = info
+    # Return info
+    return {"status": "success", "name": name, "permissions": permissions}
+
+
+@app.json_route
 def category_create(user_id: UserId, budget_id: int, category_name: str):
     # Validate permissions
     if budget_permissions(budget_id, user_id) < Permissions.UPDATE:
@@ -399,6 +421,22 @@ def category_list(user_id: UserId, budget_id: int):
     ]
     # Return categories
     return {"status": "success", "categories": categories}
+
+
+@app.json_route
+def category_info(user_id: UserId, budget_id: int, category_id: int):
+    # Validate permissions
+    if budget_permissions(budget_id, user_id) < Permissions.VIEW:
+        return {"error": "insufficient permissions"}, 403
+    # Get category info
+    name = db.query_one("""
+        SELECT category_name FROM categories
+        WHERE budget_id=%s AND category_id=%s;
+    """, (budget_id, category_id))
+    if name is None:
+        return {"error": "category does not exist"}, 400
+    # Return info
+    return {"status": "success", "name", name}
 
 
 @app.json_route
@@ -471,6 +509,32 @@ def expense_delete(user_id: UserId, budget_id: int,
     """, (category_id, expense_id))
     # Return status
     return {"status": "success"}
+
+
+@app.json_route
+def expense_info(user_id: UserId, budget_id: int, category_id: int,
+        expense_id: int):
+    # Validate permissions
+    if budget_permissions(budget_id, user_id) < Permissions.VIEW:
+        return {"error": "insufficient permissions"}, 403
+    # Validate the given category belongs to the given budget
+    if not category_in_budget(category_id, budget_id):
+        return {"error": "budget category does not exist"}, 400
+    # Get info
+    info = db.query_one("""
+        SELECT expense_description, expense_amount, expense_date
+        FROM expenses WHERE expense_id=%s AND category_id=%s;
+    """, (expense_id, category_id))
+    if info is None:
+        return {"error": "expense does not exist"}, 400
+    description, amount, date = info
+    # Return status
+    return {
+        "status": "success",
+        "description": description,
+        "amount": str(amount),
+        "date": date.isoformat()
+    }
 
 
 @app.json_route
