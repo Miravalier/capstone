@@ -1,3 +1,6 @@
+import {apiRequest} from "./api.js";
+
+
 export class Budget {
     constructor(id, name, permissions) {
         this.id = id;

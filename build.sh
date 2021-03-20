@@ -91,6 +91,7 @@ configure nginx/app.conf
 install www/isometric/isometric.html
 install www/isometric/isometric.js
 install www/isometric/isometric.css
+install-directory www/isometric/modules
 install-directory www/isometric/resources
 
 echo "=== Bringing Containers Up ==="
