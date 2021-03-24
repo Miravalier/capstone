@@ -1,5 +1,6 @@
 /*
- * Return true if the login succeeds, false otherwise.
+ * If the login succeeds, stores the authtoken in the session
+ * storage. Returns the JSON reply.
  */
 export async function login(username, password)
 {
@@ -8,17 +9,18 @@ export async function login(username, password)
     {
         console.log("Login successful");
         sessionStorage.setItem('authtoken', reply.authtoken);
-        return true;
+        return reply;
     }
     else
     {
         console.error(reply.error);
-        return false;
+        return reply;
     }
 }
 
 /*
- * Return true if the registration succeeds, false otherwise.
+ * If the registration succeeds, stores the authtoken in the session
+ * storage. Returns the JSON reply.
  */
 export async function register(username, password)
 {
@@ -27,12 +29,12 @@ export async function register(username, password)
     {
         console.log("Registration successful");
         sessionStorage.setItem('authtoken', reply.authtoken);
-        return true;
+        return reply;
     }
     else
     {
         console.error(reply.error);
-        return false;
+        return reply;
     }
 }
 
@@ -62,6 +64,11 @@ export async function apiRequest(endpoint, data)
         });
     }
     catch (error) {
-        return error.responseJSON;
+        const reply = error.responseJSON;
+        if (reply.error == "login required") {
+            console.log("Session not valid, redirecting to /login...");
+            window.location.replace("/login");
+        }
+        return reply;
     }
 }

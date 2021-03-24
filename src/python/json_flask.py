@@ -50,7 +50,7 @@ class UserId:
         user_id = app.authtoken_cache[request.json.get('authtoken', None)]
         if user_id is None:
             response = jsonify({
-                "error": "missing or expired token, login required"
+                "error": "login required"
             })
             response.status_code = 401
             abort(response)

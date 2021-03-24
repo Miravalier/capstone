@@ -1,0 +1,11 @@
+body {
+    align-content: flex-start;
+}
+
+#budgets {
+    margin: 2em;
+}
+
+#budgets p {
+    text-align: center;
+}

@@ -10,14 +10,10 @@
 <link rel="stylesheet" href="/isometric.css">
 <script type="module" src="/isometric.js"></script>
 
+<link rel="stylesheet" href="/budgets.css">
+<script type="module" src="/budgets.js"></script>
 
-<script>
-  $(async () => {
-    console.log("Checking login status...");
-    const response = await apiRequest("/status");
-    if (response.status == "success") {
-      console.log("Session valid, redirecting to /budgets...")
-      window.location.href = "/budgets";
-    }
-  });
-</script>
+
+<div id="budgets" class="budgets box-frame">
+  <p>Budgets</p>
+</div>
