@@ -6,6 +6,6 @@ body {
     margin: 2em;
 }
 
-#budgets p {
+.budgets p {
     text-align: center;
 }
