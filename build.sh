@@ -99,6 +99,7 @@ install www/isometric/isometric.js
 install www/isometric/isometric.css
 install-directory www/isometric/modules
 install-directory www/isometric/resources
+install-directory www/isometric/webfonts
 
 echo "=== Bringing Containers Up ==="
 docker-compose up --build -d

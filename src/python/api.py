@@ -9,6 +9,7 @@ import sys
 from datetime import datetime, date
 from enum import IntFlag
 from hmac import compare_digest
+from typing import Optional
 
 # Pip dependency imports
 from flask import session, request, abort
@@ -43,6 +44,7 @@ db = DB("isometric", schema={
     "budgets": {
         "budget_id": PrimaryKey,
         "budget_name": str,
+        "previous_budget_id": int,
     },
     "budget_permissions": {
         "budget_permission_id": PrimaryKey,
@@ -262,7 +264,9 @@ def budget_permissions_relinquish(user_id: UserId, budget_id: int):
 
 
 @app.json_route
-def budget_create(user_id: UserId, budget_name: str):
+def budget_create(user_id: UserId, budget_name: str,
+        previous_budget_id: Optional[int]):
+    print("BC ", user_id, budget_name, previous_budget_id)
     # Validate budget does not exist
     budget_id = db.query_one("""
         SELECT budget_id FROM budgets WHERE budget_name=%s;
@@ -271,8 +275,8 @@ def budget_create(user_id: UserId, budget_name: str):
         return {"error": "budget exists"}, 400
     # Create budget
     budget_id = db.execute_one(
-        "INSERT INTO budgets (budget_name) VALUES (%s) RETURNING budget_id;",
-        (budget_name,)
+        "INSERT INTO budgets (budget_name, previous_budget_id) VALUES (%s, %s) RETURNING budget_id;",
+        (budget_name, previous_budget_id)
     )
     # Add owner permissions to creator
     db.execute("""
@@ -314,7 +318,7 @@ def budget_list(user_id: UserId):
     # Get list of budgets
     budgets = db.query("""
         SELECT  budgets.budget_id, budgets.budget_name,
-                budget_permissions.permissions
+                budgets.previous_budget_id, budget_permissions.permissions
         FROM budgets JOIN budget_permissions
         ON budgets.budget_id=budget_permissions.budget_id
         WHERE budget_permissions.user_id=%s;
@@ -323,9 +327,10 @@ def budget_list(user_id: UserId):
     budgets = [
         {
             "id": budget_id,
+            "previous_id": previous_id,
             "name": name,
             "permissions": permissions
-        } for budget_id, name, permissions in budgets
+        } for budget_id, name, previous_id, permissions in budgets
     ]
     # Return budgets
     return {"status": "success", "budgets": budgets}
@@ -339,7 +344,7 @@ def budget_info(user_id: UserId, budget_id: int):
     # Get info
     info = db.query_one(
         """
-            SELECT budget_name, permissions
+            SELECT budget_name, previous_budget_id, permissions
             FROM budgets JOIN budget_permissions
             ON budgets.budget_id=budget_permissions.budget_id
             WHERE budgets.budget_id=%s AND budget_permissions.user_id=%s
@@ -348,9 +353,12 @@ def budget_info(user_id: UserId, budget_id: int):
     )
     if info is None:
         return {"error": "budget does not exist"}, 400
-    name, permissions = info
+    name, previous_id, permissions = info
     # Return info
-    return {"status": "success", "name": name, "permissions": permissions}
+    return {
+        "status": "success", "name": name, "permissions": permissions,
+        "previous_id": previous_id
+    }
 
 
 @app.json_route

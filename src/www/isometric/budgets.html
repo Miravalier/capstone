@@ -5,6 +5,7 @@
 <script src="https://code.jquery.com/jquery-3.6.0.min.js" crossorigin="anonymous"></script>
 <link rel="preconnect" href="https://fonts.gstatic.com">
 <link href="https://fonts.googleapis.com/css2?family=Quicksand&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/resources/fa.css">
 
 <link rel="icon" href="/resources/isometric.webp">
 <link rel="stylesheet" href="/isometric.css">
@@ -14,7 +15,11 @@
 <script type="module" src="/budgets.js"></script>
 
 
-<div class="budgets box-frame">
-  <p>Budgets</p>
-  <div id="budgets"></div>
+<div class="box-frame">
+  <p class="title">Budgets</p>
+  <div class="budget-list"></div>
+  <button id="new">
+    <i class="fas fa-plus-hexagon"></i>
+    New Budget
+  </button>
 </div>

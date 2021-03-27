@@ -4,6 +4,7 @@ from datetime import date
 from inspect import Signature, Parameter
 from flask import Flask, abort, request, jsonify
 from cache import Cache
+from typing import Union, get_origin, get_args
 
 
 class JsonFlask(Flask):
@@ -94,15 +95,27 @@ def json_endpoint(app: JsonFlask):
                 # Otherwise, if the type has an annotation, make sure it matches
                 elif parameter.annotation is not Parameter.empty:
                     arg_value = request.json.get(parameter.name, None)
-                    if not isinstance(arg_value, parameter.annotation):
+                    # Get list of parameter options
+                    if get_origin(parameter.annotation) is Union:
+                        options = get_args(parameter.annotation)
+                    else:
+                        options = (parameter.annotation,)
+                    # Try each of the parameter options
+                    match = False
+                    for option in options:
+                        if arg_value == option or isinstance(arg_value, option):
+                            match = True
+                            break
+                    # If no match was found, return an error
+                    if not match:
                         response = jsonify({
                             "error": f'incorrect type for JSON parameter "{parameter.name}": "{type(arg_value).__name__}"'
                         })
                         response.status_code = 400
                         abort(response)
-                # Finally, if no validate_json() and no annotation, just ignore this parameter
+                # Finally, if no validate_json() and no annotation, don't validate this parameter
                 else:
-                    continue
+                    arg_value = request.json.get(parameter.name, None)
                 # Add argument to argument data structures
                 if parameter.kind in (Parameter.POSITIONAL_ONLY, Parameter.POSITIONAL_OR_KEYWORD):
                     args.append(arg_value)

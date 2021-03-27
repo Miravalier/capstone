@@ -1,7 +1,7 @@
 import { apiRequest, login, register } from "./modules/api.js";
 
 $(() => {
-    $("#register").click(async ev => {
+    $("#register").on("click", async ev => {
         const username = $("#username").val();
         const password = $("#password").val();
         if (!username) {
@@ -18,7 +18,7 @@ $(() => {
         }
     });
 
-    $("#login").click(async ev => {
+    $("#login").on("click", async ev => {
         const username = $("#username").val();
         const password = $("#password").val();
         if (!username) {

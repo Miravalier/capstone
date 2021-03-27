@@ -2,10 +2,16 @@ body {
     align-content: flex-start;
 }
 
-#budgets {
+.budget-list {
     margin: 2em;
 }
 
-.budgets p {
+.title {
     text-align: center;
+    font-weight: bold;
+}
+
+.info {
+    text-align: center;
+    font-style: italic;
 }

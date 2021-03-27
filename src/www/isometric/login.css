@@ -1,3 +1,7 @@
+.box-frame {
+    align-items: stretch;
+}
+
 body {
     display: flex;
     flex-flow: column nowrap;
@@ -8,14 +12,6 @@ body {
 input {
     font-size: 1.5em;
     color: black;
-}
-
-button {
-    padding: 4px;
-    margin: 8px 0px;
-    font-size: 1em;
-    flex: 1;
-    font-weight: bold;
 }
 
 button#register {

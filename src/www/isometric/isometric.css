@@ -21,7 +21,7 @@ html, body {
     display: flex;
     flex-flow: column nowrap;
     justify-content: center;
-    align-items: stretch;
+    align-items: center;
 
     background: #838383;
     border-radius: 1px;
@@ -43,4 +43,13 @@ html, body {
     flex-flow: row nowrap;
     justify-content: center;
     align-items: center;
+}
+
+button {
+    padding: 4px;
+    margin: 8px 0px;
+    font-size: 1em;
+    flex: 1;
+    font-weight: bold;
+    color: black;
 }
