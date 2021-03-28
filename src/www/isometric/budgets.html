@@ -17,8 +17,19 @@
 
 <div class="box-frame">
   <p class="title">Budgets</p>
-  <div class="budget-list"></div>
-  <button id="new">
+  <div class="budget-table">
+    <div class="budget-column names">
+      <p class="header">Name</p>
+    </div>
+    <div class="budget-column permissions">
+      <p class="header">Role</p>
+    </div>
+    <div class="budget-column buttons">
+      <p class="header">&nbsp;</p>
+    </div>
+  </div>
+  <p class="info" style="display: none;">No budgets found.</p>
+  <button class="new-budget">
     <i class="fas fa-plus-hexagon"></i>
     New Budget
   </button>

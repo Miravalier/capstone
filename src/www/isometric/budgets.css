@@ -2,16 +2,54 @@ body {
     align-content: flex-start;
 }
 
-.budget-list {
-    margin: 2em;
+.box-frame {
+    background: none;
+    border: none;
 }
 
 .title {
+    font-size: 1.5em;
     text-align: center;
+    font-weight: bold;
+}
+
+.header {
     font-weight: bold;
 }
 
 .info {
     text-align: center;
     font-style: italic;
+}
+
+.budget-table {
+    margin: 1.25em;
+    display: flex;
+    flex-flow: row nowrap;
+    align-items: flex-start;
+    justify-content: space-evenly;
+}
+
+.budget-column {
+    display: flex;
+    flex-flow: column nowrap;
+    justify-content: flex-start;
+    align-items: flex-start;
+    margin: 0.5em 1em;
+}
+
+.budget-column * {
+    line-height: 1.5em;
+}
+
+span.button {
+    transition: color 0.5s;
+}
+
+span.button:hover {
+    filter: drop-shadow(0 0 0.75rem #008000);
+}
+
+span.button:active {
+    color: #008000;
 }

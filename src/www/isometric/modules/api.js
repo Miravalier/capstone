@@ -66,8 +66,11 @@ export async function apiRequest(endpoint, data)
     catch (error) {
         const reply = error.responseJSON;
         if (reply.error == "login required") {
-            console.log("Session not valid, redirecting to /login...");
+            console.error("Session not valid, redirecting to /login...");
             window.location.replace("/login");
+        }
+        else {
+            console.error(reply.error);
         }
         return reply;
     }

@@ -266,7 +266,6 @@ def budget_permissions_relinquish(user_id: UserId, budget_id: int):
 @app.json_route
 def budget_create(user_id: UserId, budget_name: str,
         previous_budget_id: Optional[int]):
-    print("BC ", user_id, budget_name, previous_budget_id)
     # Validate budget does not exist
     budget_id = db.query_one("""
         SELECT budget_id FROM budgets WHERE budget_name=%s;

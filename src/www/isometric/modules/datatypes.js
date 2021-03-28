@@ -9,8 +9,9 @@ export const PERM_OWNER = 8;
 
 
 export class Budget {
-    constructor(id, name, permissions) {
+    constructor(id, previous_id, name, permissions) {
         this.id = id;
+        this.previous_id = previous_id;
         this._name = name;
         this._permissions = permissions;
         this._categories = null;
@@ -38,6 +39,17 @@ export class Budget {
         return this._permissions;
     }
 
+    get role() {
+        switch (this.permissions) {
+            case PERM_NONE: return "None";
+            case PERM_VIEW: return "View-Only";
+            case PERM_UPDATE: return "User";
+            case PERM_ADMIN: return "Admin";
+            case PERM_OWNER: return "Owner";
+            default: return "Level " + this.permissions;
+        }
+    }
+
     async categories() {
         if (!this._categories) {
             this._categories = await Category.list(this.id);
@@ -57,6 +69,7 @@ export class Budget {
         }
         return new Budget(
             budget_id,
+            response.previous_id,
             response.name,
             response.permissions
         );
@@ -70,11 +83,24 @@ export class Budget {
         const budgets = [];
         response.budgets.forEach(budgetData => {
             const budget = new Budget(
-                budgetData.id, budgetData.name, budgetData.permissions
+                budgetData.id, budgetData.previous_id,
+                budgetData.name, budgetData.permissions
             );
             budgets.push(budget);
         });
         return budgets;
+    }
+
+    async createChildBudget(name) {
+        const response = await apiRequest(
+            "/budget/create",
+            {budget_name: name, previous_budget_id: this.id}
+        );
+        if (response.error) {
+            throw response.error;
+        }
+
+        return new Budget(response.id, this.id, name, PERM_OWNER);
     }
 
     static async create(name) {
@@ -86,7 +112,7 @@ export class Budget {
             throw response.error;
         }
 
-        return new Budget(response.id, name, PERM_OWNER);
+        return new Budget(response.id, null, name, PERM_OWNER);
     }
 
     async addCategory(name) {
