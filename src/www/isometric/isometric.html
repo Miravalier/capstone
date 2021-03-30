@@ -17,8 +17,8 @@
     console.log("Checking login status...");
     const response = await apiRequest("/status");
     if (response.status == "success") {
-      console.log("Session valid, redirecting to /budgets...")
-      window.location.href = "/budgets";
+      console.log("Session valid, redirecting to /home...")
+      window.location.href = "/home";
     }
   });
 </script>

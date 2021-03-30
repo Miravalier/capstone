@@ -91,9 +91,12 @@ configure nginx/app.conf
 install www/isometric/login.html
 install www/isometric/login.js
 install www/isometric/login.css
-install www/isometric/budgets.html
-install www/isometric/budgets.js
-install www/isometric/budgets.css
+install www/isometric/home.html
+install www/isometric/home.js
+install www/isometric/home.css
+install www/isometric/budget.html
+install www/isometric/budget.js
+install www/isometric/budget.css
 install www/isometric/isometric.html
 install www/isometric/isometric.js
 install www/isometric/isometric.css

@@ -31,7 +31,7 @@ $(() => {
         }
         const response = await login(username, password);
         if (response.status == "success") {
-            window.location.href = "/budgets";
+            window.location.href = "/home";
         }
     });
 });
