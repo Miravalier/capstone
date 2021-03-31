@@ -103,6 +103,11 @@ $(async () => {
         await updateBudgets();
     });
 
+    $(".sign-out").on("click", async ev => {
+        sessionStorage.setItem('authtoken', null);
+        window.location.href = "/login";
+    });
+
     // Update the budgets list on load, then every 5 seconds
     await updateBudgets();
     setInterval(updateBudgets, 5000);

@@ -1,4 +1,4 @@
-import { apiRequest, login, register } from "./modules/api.js";
+import { login, register } from "./modules/api.js";
 
 $(() => {
     $("#register").on("click", async ev => {
@@ -14,7 +14,7 @@ $(() => {
         }
         const response = await register(username, password);
         if (response.status == "success") {
-            window.location.href = "/budgets";
+            window.location.href = "/home";
         }
     });
 
