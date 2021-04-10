@@ -7,6 +7,48 @@ import { Budget } from "./modules/datatypes.js";
 const g_budgetCache = {};
 
 
+async function createNewBudgetDialog()
+{
+    const dialogElement = $(`
+        <div class="dialog">
+            <div class="dialog-header">
+                <span>Create New Budget</span>
+            </div>
+            <div class="dialog-row">
+                <input class="name" type="text">
+            </div>
+            <div class="dialog-row">
+                <button class="create">Save <i class="fas fa-save"></i></button>
+                <button class="cancel">Cancel <i class="fas fa-ban"></i></button>
+            </div>
+        </div>
+    `);
+    // Add save callback
+    dialogElement.find(".create").on("click", async ev => {
+        // Get name parameter
+        const name = dialogElement.find(".name").val();
+        if (!name) {
+            console.error("Name parameter missing on budget create.");
+            dialogElement.remove();
+            return;
+        }
+        // Insert category in DB
+        await Budget.create(name);
+        await updateBudgets();
+        // Close dialog
+        dialogElement.remove();
+    });
+    // Add cancel callback
+    dialogElement.find(".cancel").on("click", async ev => {
+        // Close dialog
+        dialogElement.remove();
+    });
+    // Display dialog
+    $('.overlay').append(dialogElement);
+    return dialogElement;
+}
+
+
 async function updateBudgets() {
     const budgets = await Budget.list();
 
@@ -45,7 +87,7 @@ async function updateBudgets() {
             // Create button elements
             const openButton = $(`
                 <span class="button open-budget" data-id="${budget.id}">
-                    <i class="fas fa-eye"></i>
+                    <i class="fas fa-pencil"></i>
                 </span>
             `);
             openButton.on("click", async ev => {
@@ -93,14 +135,7 @@ async function updateBudgets() {
 $(async () => {
     // Set up handlers
     $(".new-budget").on("click", async ev => {
-        const response = await apiRequest("/budget/create", {
-            budget_name: `Budget ${hexToken(8)}`
-        });
-        if (response.error) {
-            console.error(response.error);
-            return;
-        }
-        await updateBudgets();
+        await createNewBudgetDialog();
     });
 
     $(".sign-out").on("click", async ev => {

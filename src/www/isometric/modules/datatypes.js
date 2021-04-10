@@ -297,9 +297,6 @@ export class Expense {
     }
 
     async update(description, amount, date) {
-        this._description = description;
-        this._amount = amount;
-        this._date = date;
         const response = await apiRequest(
             "/expense/update",
             {
@@ -311,9 +308,13 @@ export class Expense {
                 expense_date: date
             }
         );
+        
         if (response.error) {
             throw response.error;
         }
+        this._description = response.description;
+        this._amount = response.amount;
+        this._date = response.date;
     }
 
     async category() {

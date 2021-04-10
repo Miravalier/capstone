@@ -58,3 +58,45 @@ button {
 input {
     color: black;
 }
+
+button {
+    cursor: pointer;
+}
+
+span.button {
+    cursor: pointer;
+    transition: color 0.5s;
+}
+
+span.button:hover {
+    filter: drop-shadow(0 0 0.75rem #008000);
+}
+
+span.button:active {
+    color: #008000;
+}
+
+.overlay {
+    display: flex;
+    flex-flow: column wrap;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    width: 100%;
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    padding: 0;
+    pointer-events: none;
+}
+
+.overlay > * {
+    pointer-events: auto;
+}
+
+.dialog {
+    padding: 4px;
+    background: #3b3b3b;
+    border-radius: 4px;
+    margin: 8px;
+}

@@ -20,6 +20,7 @@ body {
 .info {
     text-align: center;
     font-style: italic;
+    margin-bottom: 24px;
 }
 
 .budget-table {
@@ -40,16 +41,4 @@ body {
 
 .budget-column * {
     line-height: 1.5em;
-}
-
-span.button {
-    transition: color 0.5s;
-}
-
-span.button:hover {
-    filter: drop-shadow(0 0 0.75rem #008000);
-}
-
-span.button:active {
-    color: #008000;
 }

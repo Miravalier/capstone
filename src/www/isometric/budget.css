@@ -20,6 +20,7 @@ body {
 .info {
     text-align: center;
     font-style: italic;
+    margin: 24px;
 }
 
 .budget-table {
@@ -52,4 +53,31 @@ span.button:hover {
 
 span.button:active {
     color: #008000;
+}
+
+.expense {
+    display: flex;
+    flex-flow: row nowrap;
+    justify-content: space-between;
+    align-content: center;
+}
+
+.expense .id {
+    width: 2em;
+}
+
+.expense .description {
+    width: 10em;
+}
+
+.expense .amount {
+    width: 5em;
+}
+
+.expense .date {
+    width: 6em;
+}
+
+.category {
+    margin: 8px;
 }

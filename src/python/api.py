@@ -498,7 +498,12 @@ def expense_update(user_id: UserId, budget_id: int,
         )
     )
     # Return status
-    return {"status": "success"}
+    return {
+        "status": "success",
+        "description": description,
+        "amount": f"${expense_amount:.2f}",
+        "date": expense_date.isoformat()
+    }
 
 
 @app.json_route
