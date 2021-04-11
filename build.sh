@@ -53,6 +53,12 @@ function install() {
     cp "src/$SRC" "data/$DST"
 }
 
+function install-page() {
+    install $1.html
+    install $1.css
+    install $1.js
+}
+
 function install-directory() {
     SRC="$1"
     if [[ -n $2 ]]; then
@@ -88,18 +94,11 @@ fi
 
 echo "=== Updating Configuration ==="
 configure nginx/app.conf
-install www/isometric/login.html
-install www/isometric/login.js
-install www/isometric/login.css
-install www/isometric/home.html
-install www/isometric/home.js
-install www/isometric/home.css
-install www/isometric/budget.html
-install www/isometric/budget.js
-install www/isometric/budget.css
-install www/isometric/isometric.html
-install www/isometric/isometric.js
-install www/isometric/isometric.css
+install-page www/isometric/isometric
+install-page www/isometric/login
+install-page www/isometric/home
+install-page www/isometric/budget
+install-page www/isometric/dashboard
 install-directory www/isometric/modules
 install-directory www/isometric/resources
 install-directory www/isometric/webfonts

@@ -1,0 +1,21 @@
+body {
+    align-content: flex-start;
+}
+
+.box-frame {
+    background: none;
+    border: none;
+}
+
+.title {
+    font-size: 1.5em;
+    text-align: center;
+    font-weight: bold;
+}
+
+canvas {
+    background: white;
+    margin: 8px;
+    padding: 4px;
+    border-radius: 8px;
+}

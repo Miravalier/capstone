@@ -1,6 +1,5 @@
 import { apiRequest } from "./modules/api.js";
 import { errorToast } from "./modules/ui.js";
-import { hexToken } from "./modules/util.js";
 import { Budget } from "./modules/datatypes.js";
 
 
@@ -18,7 +17,7 @@ async function createNewBudgetDialog()
                 <input class="name" type="text">
             </div>
             <div class="dialog-row">
-                <button class="create">Save <i class="fas fa-save"></i></button>
+                <button class="create">Create <i class="fas fa-save"></i></button>
                 <button class="cancel">Cancel <i class="fas fa-ban"></i></button>
             </div>
         </div>
@@ -84,6 +83,17 @@ async function updateBudgets() {
             const roleElement = $(`<p>${budget.role}</p>`);
             $(".budget-column.permissions").append(roleElement);
 
+            // Add element to parent column
+            let parentElement = null;
+            const parent = await budget.parent();
+            if (parent) {
+                parentElement = $(`<p>${parent.name}</p>`);
+            }
+            else {
+                parentElement = $(`<p>-</p>`);
+            }
+            $(".budget-column.parents").append(parentElement);
+
             // Create button elements
             const openButton = $(`
                 <span class="button open-budget" data-id="${budget.id}">
@@ -93,6 +103,16 @@ async function updateBudgets() {
             openButton.on("click", async ev => {
                 const id = $(ev.currentTarget).attr("data-id");
                 window.location.href = "/budget?id="+id;
+            });
+
+            const dashboardButton = $(`
+                <span class="button view-dashboard" data-id="${budget.id}">
+                    <i class="fas fa-chart-line"></i>
+                </span>
+            `);
+            dashboardButton.on("click", async ev => {
+                const id = $(ev.currentTarget).attr("data-id");
+                window.location.href = "/dashboard?id="+id;
             });
 
             const deleteButton = $(`
@@ -111,11 +131,12 @@ async function updateBudgets() {
             // Add buttons and container to buttons column
             const buttonContainer = $(`<div></div>`);
             buttonContainer.append(openButton);
+            buttonContainer.append(dashboardButton);
             buttonContainer.append(deleteButton);
             $(".budget-column.buttons").append(buttonContainer);
             
             // Save elements in cache
-            g_budgetCache[budget.id.toString()] = [nameElement, roleElement, buttonContainer];
+            g_budgetCache[budget.id.toString()] = [nameElement, roleElement, parentElement, buttonContainer];
         }
     }
 

@@ -11,23 +11,21 @@
 <link rel="stylesheet" href="/isometric.css">
 <script type="module" src="/isometric.js"></script>
 
-<link rel="stylesheet" href="/budget.css">
-<script type="module" src="/budget.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.1.0/dist/chart.min.js" crossorigin="anonymous"></script>
+
+<link rel="stylesheet" href="/dashboard.css">
+<script type="module" src="/dashboard.js"></script>
 
 
 <div class="box-frame">
-  <p class="title">Transactions</p>
-  <div class="category-table">
+  <p class="title">Dashboard</p>
+  <div>
+    <canvas id="chart"></canvas>
   </div>
-  <p class="info" style="display: none;">No categories created yet.</p>
-  <div class="budget-buttons">
+  <div class="dashboard-buttons">
     <button class="back">
       <i class="fas fa-arrow-left"></i>
       Back to Budgets
-    </button>
-    <button class="new-category">
-      <i class="fas fa-plus-hexagon"></i>
-      New Category
     </button>
   </div>
 </div>

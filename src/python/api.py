@@ -45,6 +45,7 @@ db = DB("isometric", schema={
         "budget_id": PrimaryKey,
         "budget_name": str,
         "previous_budget_id": int,
+        "next_budget_id": int,
     },
     "budget_permissions": {
         "budget_permission_id": PrimaryKey,
@@ -272,11 +273,24 @@ def budget_create(user_id: UserId, budget_name: str,
     """, (budget_name,))
     if budget_id is not None:
         return {"error": "budget exists"}, 400
+    # If previous budget, validate that budget has no child
+    if previous_budget_id:
+        existing_child_id = db.query_one("""
+            SELECT budget_id FROM budgets WHERE previous_budget_id=%s;
+        """, (previous_budget_id,))
+        if existing_child_id is not None:
+            return {"error": "parent budget has a child already"}, 400
+        
     # Create budget
     budget_id = db.execute_one(
         "INSERT INTO budgets (budget_name, previous_budget_id) VALUES (%s, %s) RETURNING budget_id;",
         (budget_name, previous_budget_id)
     )
+    # Add next_budget_id to previous budget
+    db.execute("""
+        UPDATE budgets SET next_budget_id=%s
+        WHERE budget_id=%s;
+    """, (budget_id, previous_budget_id))
     # Add owner permissions to creator
     db.execute("""
         INSERT INTO budget_permissions (budget_id, user_id, permissions)
@@ -317,19 +331,22 @@ def budget_list(user_id: UserId):
     # Get list of budgets
     budgets = db.query("""
         SELECT  budgets.budget_id, budgets.budget_name,
-                budgets.previous_budget_id, budget_permissions.permissions
+                budgets.previous_budget_id, budgets.next_budget_id,
+                budget_permissions.permissions
         FROM budgets JOIN budget_permissions
         ON budgets.budget_id=budget_permissions.budget_id
-        WHERE budget_permissions.user_id=%s;
+        WHERE budget_permissions.user_id=%s
+        ORDER BY budgets.budget_id;
     """, (user_id,))
     # Convert tuples in array to dictionaries
     budgets = [
         {
             "id": budget_id,
             "previous_id": previous_id,
+            "next_id": next_id,
             "name": name,
             "permissions": permissions
-        } for budget_id, name, previous_id, permissions in budgets
+        } for budget_id, name, previous_id, next_id, permissions in budgets
     ]
     # Return budgets
     return {"status": "success", "budgets": budgets}
@@ -343,7 +360,8 @@ def budget_info(user_id: UserId, budget_id: int):
     # Get info
     info = db.query_one(
         """
-            SELECT budget_name, previous_budget_id, permissions
+            SELECT budget_name, previous_budget_id,
+                next_budget_id, permissions
             FROM budgets JOIN budget_permissions
             ON budgets.budget_id=budget_permissions.budget_id
             WHERE budgets.budget_id=%s AND budget_permissions.user_id=%s
@@ -352,11 +370,11 @@ def budget_info(user_id: UserId, budget_id: int):
     )
     if info is None:
         return {"error": "budget does not exist"}, 400
-    name, previous_id, permissions = info
+    name, previous_id, next_id, permissions = info
     # Return info
     return {
         "status": "success", "name": name, "permissions": permissions,
-        "previous_id": previous_id
+        "previous_id": previous_id, "next_id": next_id
     }
 
 
@@ -417,7 +435,8 @@ def category_list(user_id: UserId, budget_id: int):
     # Query for categories
     categories = db.query("""
         SELECT category_id, category_name
-        FROM categories WHERE budget_id=%s;
+        FROM categories WHERE budget_id=%s
+        ORDER BY category_id;
     """, (budget_id,))
     # Transform tuples into dictionaries
     categories = [
@@ -561,7 +580,8 @@ def expense_list(user_id: UserId, budget_id: int, category_id: int):
     expenses = db.query("""
         SELECT  expense_id, expense_description, expense_amount,
                 expense_date
-        FROM expenses WHERE category_id=%s;
+        FROM expenses WHERE category_id=%s
+        ORDER BY expense_date, expense_id;
     """, (category_id,))
     # Transform tuples into dictionaries
     expenses = [

@@ -1,8 +1,15 @@
+import { Colors } from "./colors.js";
+
 const hexCharacters = "0123456789abcdef";
 
 
 export function randomChoice(iterable) {
     return iterable[Math.floor(Math.random() * iterable.length)];
+}
+
+
+export function randomColor() {
+    return randomChoice(Colors);
 }
 
 

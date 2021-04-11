@@ -1,9 +1,51 @@
 import { Budget, PERM_UPDATE, PERM_ADMIN } from "./modules/datatypes.js";
-
+import { errorToast } from "./modules/ui.js";
 
 let g_budget = null;
 const g_categoryCache = {};
 const g_expenseCache = {};
+
+async function createChildBudgetDialog()
+{
+    const dialogElement = $(`
+        <div class="dialog">
+            <div class="dialog-header">
+                <span>Create Child Budget</span>
+            </div>
+            <div class="dialog-row">
+                <input class="name" type="text">
+            </div>
+            <div class="dialog-row">
+                <button class="create">Create <i class="fas fa-save"></i></button>
+                <button class="cancel">Cancel <i class="fas fa-ban"></i></button>
+            </div>
+        </div>
+    `);
+    // Add save callback
+    dialogElement.find(".create").on("click", async ev => {
+        // Get name parameter
+        const name = dialogElement.find(".name").val();
+        if (!name) {
+            errorToast("Cannot create a budget with an empty name.");
+            dialogElement.remove();
+            return;
+        }
+        // Insert category in DB
+        const child_budget = await g_budget.createChildBudget(name);
+        // Close dialog
+        dialogElement.remove();
+        // Redirect to the new budget
+        window.location.href = "/budget?id=" + child_budget.id;
+    });
+    // Add cancel callback
+    dialogElement.find(".cancel").on("click", async ev => {
+        // Close dialog
+        dialogElement.remove();
+    });
+    // Display dialog
+    $('.overlay').append(dialogElement);
+    return dialogElement;
+}
 
 async function createNewCategoryDialog()
 {
@@ -272,12 +314,55 @@ $(async () => {
     // Update title
     $(".title").text(g_budget.name + " Transactions");
 
+    // If this budget has a parent budget, add a "Go to Parent" button
+    const parent_budget = await g_budget.parent();
+    if (g_budget.previous_id) {
+        const parentBudgetButton = $(`
+            <button class="view-parent-budget">
+            <i class="fas fa-chevron-double-left"></i>
+            Parent Budget
+            </button>
+        `);
+        $(".budget-buttons").append(parentBudgetButton);
+        parentBudgetButton.on("click", ev => {
+            window.location.href = "/budget?id=" + parent_budget.id;
+        });
+    }
+
+    // If this budget has no child, add create child button
+    const child_budget = await g_budget.child();
+    if (!child_budget) {
+        const createChildButton = $(`
+            <button class="create-child-budget">
+            <i class="fas fa-layer-plus"></i>
+            Create Child Budget
+            </button>
+        `);
+        $(".budget-buttons").append(createChildButton);
+        createChildButton.on("click", ev => {
+            createChildBudgetDialog();
+        });
+    }
+    // Otherwise, add a "Go to Child" button
+    else {
+        const childBudgetButton = $(`
+            <button class="view-child-budget">
+            <i class="fas fa-chevron-double-right"></i>
+            Child Budget
+            </button>
+        `);
+        $(".budget-buttons").append(childBudgetButton);
+        childBudgetButton.on("click", ev => {
+            window.location.href = "/budget?id=" + child_budget.id;
+        });
+    }
+
     // Set up handlers
-    $(".new-category").on("click", async ev => {
+    $(".new-category").on("click", ev => {
         createNewCategoryDialog();
     });
 
-    $(".back").on("click", async ev => {
+    $(".back").on("click", ev => {
         window.location.href = "/home";
         return;
     });

@@ -9,12 +9,31 @@ export const PERM_OWNER = 8;
 
 
 export class Budget {
-    constructor(id, previous_id, name, permissions) {
+    constructor(id, previous_id, next_id, name, permissions) {
         this.id = id;
         this.previous_id = previous_id;
+        this.next_id = next_id;
         this._name = name;
         this._permissions = permissions;
         this._categories = null;
+    }
+
+    async child() {
+        if (this.next_id) {
+            return await Budget.from_id(this.next_id);
+        }
+        else {
+            return null;
+        }
+    }
+
+    async parent() {
+        if (this.previous_id) {
+            return await Budget.from_id(this.previous_id);
+        }
+        else {
+            return null;
+        }
     }
 
     get name() {
@@ -70,6 +89,7 @@ export class Budget {
         return new Budget(
             budget_id,
             response.previous_id,
+            response.next_id,
             response.name,
             response.permissions
         );
@@ -83,8 +103,11 @@ export class Budget {
         const budgets = [];
         response.budgets.forEach(budgetData => {
             const budget = new Budget(
-                budgetData.id, budgetData.previous_id,
-                budgetData.name, budgetData.permissions
+                budgetData.id,
+                budgetData.previous_id,
+                budgetData.next_id,
+                budgetData.name,
+                budgetData.permissions
             );
             budgets.push(budget);
         });
@@ -179,6 +202,15 @@ export class Category {
             this._budget = await Budget.from_id(this.budget_id);
         }
         return this._budget;
+    }
+
+    async total() {
+        let result = 0;
+        const expenses = await this.expenses();
+        for (const expense of expenses) {
+            result += expense.value;
+        }
+        return result;
     }
 
     async expenses() {
@@ -290,6 +322,10 @@ export class Expense {
 
     get amount() {
         return this._amount;
+    }
+
+    get value() {
+        return Number(this._amount.substring(1));
     }
 
     get date() {
