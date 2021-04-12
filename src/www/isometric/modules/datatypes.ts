@@ -9,10 +9,13 @@ export const PERM_OWNER = 8;
 
 
 export class Budget {
-    constructor(id, previous_id, next_id, name, permissions) {
-        this.id = id;
-        this.previous_id = previous_id;
-        this.next_id = next_id;
+    private _name: string;
+    private _permissions: number
+    private _categories: any;
+
+    constructor(public id: number, public previous_id: number,
+            public next_id: number, name: string, permissions: number)
+    {
         this._name = name;
         this._permissions = permissions;
         this._categories = null;
@@ -100,8 +103,9 @@ export class Budget {
         if (response.error) {
             throw response.error;
         }
-        const budgets = [];
-        response.budgets.forEach(budgetData => {
+        const budgets: Budget[] = [];
+        for (const budgetData of budgets)
+        {
             const budget = new Budget(
                 budgetData.id,
                 budgetData.previous_id,
@@ -110,11 +114,11 @@ export class Budget {
                 budgetData.permissions
             );
             budgets.push(budget);
-        });
+        }
         return budgets;
     }
 
-    async createChildBudget(name) {
+    async createChildBudget(name: string) {
         const response = await apiRequest(
             "/budget/create",
             {budget_name: name, previous_budget_id: this.id}
@@ -123,10 +127,10 @@ export class Budget {
             throw response.error;
         }
 
-        return new Budget(response.id, this.id, name, PERM_OWNER);
+        return new Budget(response.id, this.id, response.next_id, name, PERM_OWNER);
     }
 
-    static async create(name) {
+    static async create(name: string) {
         const response = await apiRequest(
             "/budget/create",
             {budget_name: name}
@@ -135,7 +139,7 @@ export class Budget {
             throw response.error;
         }
 
-        return new Budget(response.id, null, name, PERM_OWNER);
+        return new Budget(response.id, null, null, name, PERM_OWNER);
     }
 
     async addCategory(name) {

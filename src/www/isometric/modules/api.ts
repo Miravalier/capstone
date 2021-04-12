@@ -42,7 +42,7 @@ export async function register(username, password)
  * Make a request to the API. Returns the JSON that
  * comes back.
  */
-export async function apiRequest(endpoint, data)
+export async function apiRequest(endpoint: string, data?: any): any
 {
     if (!endpoint) {
         endpoint = "/status";

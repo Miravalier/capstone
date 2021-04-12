@@ -164,7 +164,6 @@ $(async () => {
         window.location.href = "/login";
     });
 
-    // Update the budgets list on load, then every 5 seconds
+    // Update the budgets list on load
     await updateBudgets();
-    setInterval(updateBudgets, 5000);
 });

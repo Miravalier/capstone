@@ -56,7 +56,6 @@ function install() {
 function install-page() {
     install $1.html
     install $1.css
-    install $1.js
 }
 
 function install-directory() {
@@ -99,9 +98,10 @@ install-page www/isometric/login
 install-page www/isometric/home
 install-page www/isometric/budget
 install-page www/isometric/dashboard
-install-directory www/isometric/modules
 install-directory www/isometric/resources
 install-directory www/isometric/webfonts
+echo "=== Compiling TS ==="
+tsc
 
 echo "=== Bringing Containers Up ==="
 docker-compose up --build -d

@@ -13,6 +13,14 @@ export function randomColor() {
 }
 
 
+export async function deriveColor(text) {
+    const textBytes = new TextEncoder().encode(text);
+    const digest = await crypto.subtle.digest("SHA-1", textBytes);
+    const intHash = new Uint32Array(digest)[0];
+    return Colors[intHash % Colors.length];
+}
+
+
 export function hexToken(amount) {
     if (!amount) amount = 8;
     let result = "";
