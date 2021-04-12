@@ -367,7 +367,6 @@ $(async () => {
         return;
     });
 
-    // Update the categories on load, then every 5 seconds
+    // Update the categories on load
     await updateCategories();
-    setInterval(updateCategories, 5000);
 });
