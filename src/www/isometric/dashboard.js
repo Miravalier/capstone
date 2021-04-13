@@ -51,6 +51,7 @@ async function generatePieChart() {
             }
         }
     );
+    return pieChart;
 }
 
 
@@ -138,13 +139,56 @@ async function generateLineGraph() {
                 plugins: {
                     tooltip: {
                         callbacks: {
-                            label: ctx => moneyLabel(context.dataset.label || '', ctx.parsed.y)
+                            label: ctx => moneyLabel(ctx.dataset.label || '', ctx.parsed.y)
                         }
                     }
                 }
             }
         }
     );
+    return lineGraph;
+}
+
+
+async function generateBarGraph() {
+    // Generate chart data
+    const categoryNames = [];
+    const categoryAmounts = [];
+    const categoryColors = [];
+    
+    const categories = await g_budget.categories();
+    for (const category of categories) {
+        categoryNames.push(category.name);
+        categoryAmounts.push(await category.total());
+        categoryColors.push(await deriveColor(category.name));
+    }
+
+    // Render chart
+    const barGraph = new Chart(
+        document.getElementById('barGraph').getContext('2d'),
+        {
+            type: 'bar',
+            data: {
+                labels: categoryNames,
+                datasets: [{
+                    label: g_budget.name,
+                    data: categoryAmounts,
+                    backgroundColor: categoryColors
+                }]
+            },
+            options: {
+                maintainAspectRatio: false,
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: ctx => moneyLabel(ctx.dataset.label || '', ctx.parsed.y)
+                        }
+                    }
+                }
+            }
+        }
+    );
+    return barGraph;
 }
 
 
@@ -172,4 +216,5 @@ $(async () => {
 
     generatePieChart();
     generateLineGraph();
+    generateBarGraph();
 });

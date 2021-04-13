@@ -49,8 +49,8 @@ function install() {
     else
         DST="$SRC"
     fi
-    mkdir -p $(dirname "data/$DST")
-    cp "src/$SRC" "data/$DST"
+    mkdir -p $(dirname "appdata/$DST")
+    cp "src/$SRC" "appdata/$DST"
 }
 
 function install-page() {
@@ -66,9 +66,9 @@ function install-directory() {
     else
         DST="$SRC"
     fi
-    mkdir -p $(dirname "data/$DST")
-    rm -rf "data/$DST"
-    cp -r "src/$SRC" "data/$DST"
+    mkdir -p $(dirname "appdata/$DST")
+    rm -rf "appdata/$DST"
+    cp -r "src/$SRC" "appdata/$DST"
 }
 
 function configure() {
@@ -78,9 +78,9 @@ function configure() {
     else
         DST="$SRC"
     fi
-    mkdir -p $(dirname "data/$DST")
-    cp "src/$SRC" "data/$DST"
-    sed -i "s/\\\$\\\$DOMAIN\\\$\\\$/$DOMAIN/g" "data/$DST"
+    mkdir -p $(dirname "appdata/$DST")
+    cp "src/$SRC" "appdata/$DST"
+    sed -i "s/\\\$\\\$DOMAIN\\\$\\\$/$DOMAIN/g" "appdata/$DST"
 }
 
 echo "=== Bringing Containers Down ==="

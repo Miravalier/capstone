@@ -5,8 +5,8 @@ services:
         ports:
             - "8080:80"
         volumes:
-            - ./data/nginx:/etc/nginx/conf.d
-            - ./data/www/isometric:/var/www/isometric
+            - ./appdata/nginx:/etc/nginx/conf.d
+            - ./appdata/www/isometric:/var/www/isometric
     api:
         build:
             context: .
