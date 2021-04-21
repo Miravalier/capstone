@@ -1,110 +1,210 @@
 #!/usr/bin/env python3
+
 import json
+import numpy
+import pandas
 from argparse import ArgumentParser
+from functools import partial
 from pathlib import Path
-from pandas import DataFrame, concat
-from keras.models import Sequential
-from keras.layers import LSTM, Dense
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.metrics import mean_squared_error
 
 
-def is_int(value):
-    try:
-        int(value)
-        return True
-    except:
-        return False
+class ExpenseModel:
+    def __init__(self, neurons=1):
+        # Import ML libraries here rather than at the top because
+        # a lot of code is run at import time. Importlib will ensure
+        # these imports only run once.
+        from keras.models import Sequential
+        from keras.layers import LSTM, Dense
+
+        # Build model
+        self.model = Sequential()
+        self.model.add(LSTM(neurons, batch_input_shape=[1, 1, 1], stateful=True))
+        self.model.add(Dense(1))
+        self.model.compile(loss='mean_squared_error', optimizer='adam')
+
+        # Create scaler fit to the training input
+        self.scaler = PreservedScaler()
+
+    def train(self, training_input, training_output, epochs=50):
+        if len(training_input.shape) == 2:
+            # Fit scaler before training model
+            self.scaler.fit(training_input[0])
+            # For each sample, go over the whole epoch of training
+            for i, input_sample in enumerate(training_input):
+                for _ in range(epochs):
+                    output_sample = training_output[i]
+                    input_sample = self.scaler.shrink(shape_3d(input_sample))
+                    output_sample = self.scaler.shrink(shape_1d(output_sample))
+                    self.model.fit(input_sample, output_sample, epochs=1, batch_size=1,
+                            verbose=0, shuffle=False)
+                    self.model.reset_states()
+        elif len(training_input.shape) == 1:
+            # Fit scaler before training model
+            self.scaler.fit(training_input)
+            # Train the model on the entire input sample per epoch
+            for _ in range(epochs):
+                self.model.fit(
+                    self.scaler.shrink(shape_3d(training_input)),
+                    self.scaler.shrink(shape_1d(training_output)),
+                    epochs=1, batch_size=1, verbose=0, shuffle=False
+                )
+                self.model.reset_states()
+        else:
+            raise TypeError("Training input must be 1D or 2D with this model")
+
+    def predict(self, input_value):
+        scaled_output = self.model.predict(shape_3d(input_value), batch_size=1)
+        return shape_0d(self.scaler.regrow(scaled_output))
 
 
-def main():
+class PreservedScaler:
+    def __init__(self, arr=None, *, feature_range=(-1,1)):
+        self.scaler = MinMaxScaler(feature_range=feature_range)
+        if arr is not None:
+            self.fit(arr)
+
+    def fit(self, arr):
+        self.scaler.fit(shape_2d(arr))
+
+    def shrink(self, arr):
+        shaper = get_shaper(arr)
+        return shaper(self.scaler.transform(shape_2d(arr)))
+
+    def regrow(self, arr):
+        shaper = get_shaper(arr)
+        return shaper(self.scaler.inverse_transform(shape_2d(arr)))
+
+
+def get_shaper(arr):
+    return partial(shape_nd, n=len(standardize_array(arr).shape))
+
+
+def standardize_array(arr):
+    if isinstance(arr, pandas.DataFrame):
+        return arr.values
+    elif isinstance(arr, numpy.ndarray):
+        return arr
+    elif isinstance(arr, (list, set, dict)):
+        return pandas.DataFrame(arr).values
+    else:
+        return pandas.DataFrame([arr]).values
+
+
+def shape_3d(arr):
+    arr = standardize_array(arr)
+    return arr.reshape((len(arr), 1, 1))
+
+
+def shape_2d(arr):
+    arr = standardize_array(arr)
+    return arr.reshape((len(arr), 1))
+
+
+def shape_1d(arr):
+    arr = standardize_array(arr)
+    return arr.reshape((len(arr),))
+
+
+def shape_0d(arr):
+    arr = shape_1d(arr)
+    if len(arr) != 1:
+        raise ValueError("This array hold too many values to collapse to 0d")
+    return arr[0]
+
+
+def shape_nd(arr, n):
+    arr = standardize_array(arr)
+    dimensions = [len(arr)]
+    for _ in range(1, n):
+        dimensions.append(1)
+    return arr.reshape(dimensions)
+
+
+def display_directions(arr):
+    for value in arr:
+        if value < 0:
+            symbol = '🡓'
+        elif value > 0:
+            symbol = '🡑'
+        else:
+            symbol = '='
+        print(symbol, end='')
+    print()
+
+
+def test_main():
     parser = ArgumentParser()
-    parser.add_argument("-d", "--data_dir", type=Path, required=True)
     parser.add_argument("-n", "--neurons", type=int, default=1)
-    parser.add_argument("-e", "--epochs", type=int, default=100)
-    parser.add_argument("-i", "--income", type=int, default=80000)
-    parser.add_argument("-b", "--batch-size", type=int, default=1)
+    parser.add_argument("-e", "--epochs", type=int, default=50)
     args = parser.parse_args()
 
     # Load data from file
-    with open(args.data_dir / "expenses.json") as f:
-        data = json.load(f)
+    with open("data/snapshots.json") as f:
+        snapshots = json.load(f)
 
-    # Extract income brackets
-    income_brackets = data['income_brackets']
-    del data['income_brackets']
+    # Take the difference at each timestep (~30 days)
+    data = []
+    for values in snapshots.values():
+        datum = []
+        prev = None
+        for value in values:
+            if prev is not None:
+                datum.append(value - prev)
+            prev = value
+        data.append(datum)
 
-    # Select the greatest income bracket less than the given income
-    i = 1
-    while i < len(income_brackets):
-        income_bracket = income_brackets[i]
-        if income_bracket > args.income:
-            break
-        i += 1
-    i -= 1
+    # Split values into training and testing values
+    training_cutoff = int(0.8 * len(values))
+    training_data = [datum[:training_cutoff] for datum in data]
+    testing_data = [datum[training_cutoff:] for datum in data]
 
-    # Find the set of all categories between all years
-    categories = set()
-    years = {int(year) for year in data}
-    for year in range(min(years), max(years)+1):
-        categories.update(data[str(year)]['totals'].keys())
+    # Split training values into input and output
+    training_input = pandas.DataFrame(datum[:-1] for datum in training_data).values
+    training_output = pandas.DataFrame(datum[1:] for datum in training_data).values
 
-    # For each category, add the total from each year to a list
-    training_data = {}
-    for category in categories:
-        training_data[category] = []
-        for year in range(min(years), max(years)+1):
-            training_data[category].append(data[str(year)]['totals'][category][i])
+    # Split testing values into input and output
+    testing_input = pandas.DataFrame(datum[:-1] for datum in testing_data).values
+    testing_output = pandas.DataFrame(datum[1:] for datum in testing_data).values
 
-        # Split values into training and testing values
-        values = DataFrame(training_data[category]).values
-        training_cutoff = int(0.66 * len(values))
+    print("----------------")
+    print("Compiling model.")
+    print("----------------")
 
-        # Split training values into input and output
-        training_input = values[:training_cutoff]
-        training_output = values[1:training_cutoff+1]
+    model = ExpenseModel(neurons=args.neurons)
 
-        # Split testing values into input and output
-        testing_input = values[training_cutoff:-1]
-        testing_output = values[training_cutoff+1:]
+    print("---------------")
+    print("Training model.")
+    print("---------------")
 
-        # Reshape inputs into 3D arrays for the model
-        training_input = training_input.reshape((len(training_input), 1, 1))
-        testing_input = testing_input.reshape((len(testing_input), 1, 1))
+    model.train(training_input, training_output, epochs=args.epochs)
+    
+    print("-------------------")
+    print("Making predictions.")
+    print("-------------------")
 
-        # Reshape outputs to 1D arrays
-        training_output = training_output.reshape((len(training_output),))
-        testing_output = testing_output.reshape((len(testing_output),))
+    # Make predictions
+    predictions = []
+    expectations = []
 
-        print('----- Train Input -----')
-        print(training_input)
-        print('----- Train Output -----')
-        print(training_output)
-        print('----- Test Input -----')
-        print(testing_input)
-        print('----- Test Output -----')
-        print(testing_output)
-        print('-----')
+    for i, input_sample in enumerate(testing_input):
+        # Shape the testing input and output to simple arrays for iterating over
+        input_sample = shape_1d(input_sample)
+        output_sample = shape_1d(testing_output[i])
 
-        # Build model
-        model = Sequential()
-        model.add(LSTM(args.neurons, batch_input_shape=[args.batch_size, 1, 1], stateful=True))
-        model.add(Dense(1))
-        model.compile(loss='mean_squared_error', optimizer='adam')
-        for i in range(args.epochs):
-            model.fit(training_input, training_output, epochs=1, batch_size=args.batch_size, verbose=0, shuffle=False)
-            model.reset_states()
+        # Make predictions
+        for j, value in enumerate(input_sample):
+            predictions.append(model.predict(value))
+            expectations.append(output_sample[j])
 
-        model.predict(training_input, batch_size=args.batch_size)
-
-        for i in range(len(training_input)):
-            prediction_input = training_input[i].reshape((1,1,1))
-            guess = model.predict(prediction_input, batch_size=args.batch_size)
-            guess = guess[0,0]
-            expected = training_output[i]
-            print("Guess:", guess)
-            print("Expected:", expected)
-
-        return
+    # Compare the predictions to the expected outputs for accuracy
+    print("Prediction Directions:")
+    display_directions(predictions)
+    print("Expectation Directions:")
+    display_directions(expectations)
+    print("RMSE: ", mean_squared_error(expectations, predictions) ** 0.5)
 
 
 if __name__ == '__main__':
-    main()
+    test_main()
