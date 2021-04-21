@@ -15,7 +15,7 @@ class ExpenseModel:
         # Import ML libraries here rather than at the top because
         # a lot of code is run at import time. Importlib will ensure
         # these imports only run once.
-        from keras.models import Sequential
+        from keras.models import Sequential, load_model
         from keras.layers import LSTM, Dense
 
         # Build model
@@ -26,6 +26,15 @@ class ExpenseModel:
 
         # Create scaler fit to the training input
         self.scaler = PreservedScaler()
+
+    def save(self, path):
+        self.model.save(path)
+
+    @classmethod
+    def load(cls, path):
+        obj = cls()
+        obj.model = keras.models.load_model(path)
+        return obj
 
     def train(self, training_input, training_output, epochs=50):
         if len(training_input.shape) == 2:
@@ -134,12 +143,7 @@ def display_directions(arr):
     print()
 
 
-def test_main():
-    parser = ArgumentParser()
-    parser.add_argument("-n", "--neurons", type=int, default=1)
-    parser.add_argument("-e", "--epochs", type=int, default=50)
-    args = parser.parse_args()
-
+def perform_test(args):
     # Load data from file
     with open("data/snapshots.json") as f:
         snapshots = json.load(f)
@@ -206,5 +210,22 @@ def test_main():
     print("RMSE: ", mean_squared_error(expectations, predictions) ** 0.5)
 
 
+def create_model(args):
+    print("TODO: create model")
+
+
+def main():
+    parser = ArgumentParser()
+    parser.add_argument("-n", "--neurons", type=int, default=1)
+    parser.add_argument("-e", "--epochs", type=int, default=50)
+    parser.add_argument("-m", "--mode", choices=['test', 'create_model'], default='test')
+    args = parser.parse_args()
+
+    if args.mode == 'test':
+        perform_test(args)
+    elif args.mode == 'create_model':
+        create_model(args)
+
+
 if __name__ == '__main__':
-    test_main()
+    main()
