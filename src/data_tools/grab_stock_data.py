@@ -6,6 +6,7 @@
 import json
 import random
 import requests
+from argparse import ArgumentParser
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -17,31 +18,35 @@ INPUT_PATH = Path("data/S&P500.json")
 OUTPUT_PATH = Path("data/snapshots.json")
 
 
-def get_stock_data(symbol="AAPL", day=date.today() - timedelta(days=1)):
+def get_stock_data(symbol: str, day: date):
     url = API_BASE_URL.format(symbol, day.isoformat(), API_KEY)
     return requests.get(url).json()
 
 
 def main():
-    today = date.today()
+    parser = ArgumentParser()
+    parser.add_argument("-c", "--count", type=int, default=5, help="Number of different symbols to query.")
+    parser.add_argument("-d", "--days", type=int, default=1825, help="Days back to start querying.")
+    args = parser.parse_args()
 
     with open(INPUT_PATH) as f:
         all_symbols = [datum['Symbol'] for datum in json.load(f)]
 
     symbols = set()
-    while len(symbols) < 5:
-        added_symbols = random.sample(all_symbols, 5 - len(symbols))
+    while len(symbols) < args.count:
+        added_symbols = random.sample(all_symbols, args.count - len(symbols))
         for symbol in added_symbols:
             stock_data = get_stock_data(symbol, date(2015, 6, 1))
             print(stock_data)
             if stock_data['status'] == 'OK':
                 symbols.add(symbol)
 
+    today = date.today()
     data = {}
     for symbol in symbols:
         symbol_snapshots = []
         # Start 5 years ago
-        day = today - timedelta(days=1825)
+        day = today - timedelta(days=args.days)
         # Run until today
         while day < today:
             # Skip weekends
