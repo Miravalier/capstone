@@ -10,7 +10,7 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import mean_squared_error
 
 
-class ExpenseModel:
+class StockModel:
     def __init__(self, neurons=1):
         # Import ML libraries here rather than at the top because
         # a lot of code is run at import time. Importlib will ensure
@@ -176,7 +176,7 @@ def perform_test(args):
     print("Compiling model.")
     print("----------------")
 
-    model = ExpenseModel(neurons=args.neurons)
+    model = StockModel(neurons=args.neurons)
 
     print("---------------")
     print("Training model.")
@@ -211,7 +211,39 @@ def perform_test(args):
 
 
 def create_model(args):
-    print("TODO: create model")
+    # Load data from file
+    with open("data/snapshots.json") as f:
+        snapshots = json.load(f)
+
+    # Take the difference at each timestep (~30 days)
+    data = []
+    for values in snapshots.values():
+        datum = []
+        prev = None
+        for value in values:
+            if prev is not None:
+                datum.append(value - prev)
+            prev = value
+        data.append(datum)
+
+    # Split training values into input and output
+    training_input = pandas.DataFrame(datum[:-1] for datum in data).values
+    training_output = pandas.DataFrame(datum[1:] for datum in data).values
+
+    print("----------------")
+    print("Compiling model.")
+    print("----------------")
+
+    model = StockModel(neurons=args.neurons)
+
+    print("---------------")
+    print("Training model.")
+    print("---------------")
+
+    model.train(training_input, training_output, epochs=args.epochs)
+
+    # Save model to disk for later
+    model.save(args.save_path)
 
 
 def main():
@@ -219,6 +251,7 @@ def main():
     parser.add_argument("-n", "--neurons", type=int, default=1)
     parser.add_argument("-e", "--epochs", type=int, default=50)
     parser.add_argument("-m", "--mode", choices=['test', 'create_model'], default='test')
+    parser.add_argument("-p", "--save-path", default='./appdata/model/stock_lstm')
     args = parser.parse_args()
 
     if args.mode == 'test':
