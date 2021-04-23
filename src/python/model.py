@@ -15,7 +15,7 @@ class StockModel:
         # Import ML libraries here rather than at the top because
         # a lot of code is run at import time. Importlib will ensure
         # these imports only run once.
-        from keras.models import Sequential, load_model
+        from keras.models import Sequential
         from keras.layers import LSTM, Dense
 
         # Build model
@@ -32,6 +32,7 @@ class StockModel:
 
     @classmethod
     def load(cls, path):
+        from tensorflow import keras
         obj = cls()
         obj.model = keras.models.load_model(path)
         return obj
@@ -65,6 +66,11 @@ class StockModel:
 
     def predict(self, input_value):
         scaled_output = self.model.predict(shape_3d(input_value), batch_size=1)
+        return shape_0d(self.scaler.regrow(scaled_output))
+
+    def predict_seq(self, input_sequence):
+        for input_value in input_sequence:
+            scaled_output = self.model.predict(shape_3d(input_value), batch_size=1)
         return shape_0d(self.scaler.regrow(scaled_output))
 
 

@@ -1,5 +1,5 @@
 FROM python:3.9
-RUN pip install psycopg2 flask waitress
+RUN pip install psycopg2 flask waitress numpy pandas scikit-learn tensorflow
 COPY src/python /app
 WORKDIR /app
 ENTRYPOINT ["/usr/local/bin/python", "-u"]

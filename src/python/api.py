@@ -17,6 +17,7 @@ from flask import session, request, abort
 # Project imports
 from sql_interface import DB, PrimaryKey, ForeignKey, Money
 from json_flask import JsonFlask, UserId, DateStr
+from model import StockModel
 
 
 # Set up SIGTERM handler
@@ -76,6 +77,9 @@ app.config.update(
     SESSION_COOKIE_NAME="isometric_session",
     APPLICATION_ROOT="/api/",
 )
+
+
+stock_model = StockModel.load("/model/stock_lstm")
 
 
 # Database Functions
@@ -595,6 +599,19 @@ def expense_list(user_id: UserId, budget_id: int, category_id: int):
     ]
     # Return expenses
     return {"status": "success", "expenses": expenses}
+
+
+@app.json_route
+def model_predict_value(user_id: UserId, value: float):
+    return stock_model.predict(value)
+
+
+@app.json_route
+def model_predict_sequence(user_id: UserId, values: list):
+    try:
+        return stock_model.predict_seq(values)
+    except (TypeError, ValueError):
+        return {"error": "invalid sequence"}, 400
 
 
 # Start UWSGI server
