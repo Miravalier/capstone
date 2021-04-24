@@ -1,5 +1,6 @@
 import { Budget, PERM_UPDATE, PERM_ADMIN } from "./modules/datatypes.js";
 import { errorToast } from "./modules/ui.js";
+import { apiRequest } from "./modules/api.js";
 
 let g_budget = null;
 const g_categoryCache = {};
@@ -280,7 +281,7 @@ async function updateCategories() {
                 const expenseElement = createExpenseElement(categoryElement, expense);
                 g_expenseCache[category.id.toString()][expense.id.toString()] = expenseElement;
             }
-            
+
             // Save header categoryElement in cache
             g_categoryCache[category.id.toString()] = categoryElement;
         }
@@ -313,6 +314,27 @@ $(async () => {
 
     // Update title
     $(".title").text(g_budget.name + " Transactions");
+
+    // Add the options to the stock selector
+    const symbols = (await apiRequest("/symbols")).symbols;
+    for (const symbol of symbols)
+    {
+        $(".stock-selector").append($(`<option value="${symbol}">${symbol}</option>`));
+    }
+
+    // If the budget has a stock selected, set that option in the selector
+    if (g_budget.ticker_symbol)
+    {
+        $(".stock-selector").val(g_budget.ticker_symbol);
+    }
+
+    // Make the stock selector visible
+    $(".stock-selector").css('display', 'block');
+
+    $(".stock-selector").on("change", async ev => {
+        const symbol = $(".stock-selector option:selected").val();
+        await g_budget.update(g_budget.name, symbol);
+    });
 
     // If this budget has a parent budget, add a "Go to Parent" button
     const parent_budget = await g_budget.parent();

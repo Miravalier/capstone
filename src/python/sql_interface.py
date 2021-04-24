@@ -25,11 +25,12 @@ class Money:
             response.status_code = 400
             abort(response)
 
+
 foreign_key_cache = {}
-def ForeignKey(category, primary_key):
-    kind = foreign_key_cache.get(category, object())
-    foreign_key_cache[category] = kind
-    sql_type_conversions[kind] = f"integer REFERENCES {category}({primary_key}) ON DELETE CASCADE"
+def ForeignKey(category, primary_key, rule="CASCADE"):
+    kind = foreign_key_cache.get((category, rule), object())
+    foreign_key_cache[(category, rule)] = kind
+    sql_type_conversions[kind] = f"integer REFERENCES {category}({primary_key}) ON DELETE {rule}"
     return kind
 
 

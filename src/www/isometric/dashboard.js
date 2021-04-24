@@ -55,6 +55,67 @@ async function generatePieChart() {
 }
 
 
+async function getStockValues(symbol)
+{
+    const response = await apiRequest("/symbol/values", {ticker_symbol: symbol});
+    if (response.error)
+    {
+        throw response.error;
+    }
+
+    const values = response.values;
+    const labels = response.labels;
+    return [values, labels];
+}
+
+
+async function generateStockGraph() {
+    $("#stockGraph").css("display", "block");
+
+    // Get historical chart data
+    const [values, labels] = await getStockValues(g_budget.ticker_symbol);
+    // Get projected chart data
+    const response = await apiRequest("/model/predict", {values: values});
+    if (!response.error)
+    {
+        values.push(response.value);
+        labels.push("Proj.");
+    }
+
+    // Construct datasets
+    const datasets = [{
+        label: g_budget.ticker_symbol,
+        data: values,
+        fill: false,
+        borderColor: '#000000',
+        tension: 0.1
+    }];
+
+    // Render chart
+    const stockGraph = new Chart(
+        document.getElementById('stockGraph').getContext('2d'),
+        {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: datasets
+            },
+            options: {
+                maintainAspectRatio: false,
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: ctx => moneyLabel(ctx.dataset.label || '', ctx.parsed.y)
+                        }
+                    }
+                }
+            }
+        }
+    );
+    return stockGraph;
+}
+
+
 async function generateLineGraph() {
     // Generate chart data
     const categoryData = {};
@@ -217,4 +278,5 @@ $(async () => {
     generatePieChart();
     generateLineGraph();
     generateBarGraph();
+    generateStockGraph();
 });

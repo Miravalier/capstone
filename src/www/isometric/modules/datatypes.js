@@ -9,8 +9,10 @@ export const PERM_OWNER = 8;
 
 
 export class Budget {
-    constructor(id, previous_id, next_id, name, permissions) {
+    constructor(id, ticker_symbol, previous_id, next_id, name, permissions)
+    {
         this.id = id;
+        this.ticker_symbol = ticker_symbol;
         this.previous_id = previous_id;
         this.next_id = next_id;
         this._name = name;
@@ -40,18 +42,24 @@ export class Budget {
         return this._name;
     }
 
-    async update(name) {
-        this._name = name;
+    async update(name, ticker_symbol) {
+        if (!ticker_symbol)
+        {
+            ticker_symbol = null;
+        }
         const response = await apiRequest(
             "/budget/update",
             {
                 budget_id: this.id,
-                budget_name: name
+                budget_name: name,
+                ticker_symbol: ticker_symbol
             }
         );
         if (response.error) {
             throw response.error;
         }
+        this._name = name;
+        this.ticker_symbol = ticker_symbol;
     }
 
     get permissions() {
@@ -88,6 +96,7 @@ export class Budget {
         }
         return new Budget(
             budget_id,
+            response.ticker_symbol,
             response.previous_id,
             response.next_id,
             response.name,
@@ -104,6 +113,7 @@ export class Budget {
         response.budgets.forEach(budgetData => {
             const budget = new Budget(
                 budgetData.id,
+                budgetData.ticker_symbol,
                 budgetData.previous_id,
                 budgetData.next_id,
                 budgetData.name,
@@ -123,7 +133,17 @@ export class Budget {
             throw response.error;
         }
 
-        return new Budget(response.id, this.id, name, PERM_OWNER);
+        //constructor(id, ticker_symbol, previous_id, next_id, name, permissions)
+        const childBudget = new Budget(response.id, null, this.id, null, name, PERM_OWNER);
+
+        for (const category of await this.categories())
+        {
+            await childBudget.addCategory(category.name);
+        }
+
+        console.log(`Updating with name "${childBudget.name}" and symbol "${this.ticker_symbol}"`);
+        await childBudget.update(childBudget.name, this.ticker_symbol);
+        return childBudget;
     }
 
     static async create(name) {
@@ -135,7 +155,7 @@ export class Budget {
             throw response.error;
         }
 
-        return new Budget(response.id, null, name, PERM_OWNER);
+        return new Budget(response.id, null, null, name, PERM_OWNER);
     }
 
     async addCategory(name) {

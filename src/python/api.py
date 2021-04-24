@@ -2,6 +2,7 @@
 import base64
 import functools
 import hashlib
+import json
 import os
 import secrets
 import signal
@@ -9,7 +10,7 @@ import sys
 from datetime import datetime, date
 from enum import IntFlag
 from hmac import compare_digest
-from typing import Optional
+from typing import Optional, Union
 
 # Pip dependency imports
 from flask import session, request, abort
@@ -44,9 +45,10 @@ db = DB("isometric", schema={
     },
     "budgets": {
         "budget_id": PrimaryKey,
+        "ticker_symbol": str,
         "budget_name": str,
-        "previous_budget_id": int,
-        "next_budget_id": int,
+        "previous_budget_id": ForeignKey("budgets", "budget_id"),
+        "next_budget_id": ForeignKey("budgets", "budget_id", "SET NULL"),
     },
     "budget_permissions": {
         "budget_permission_id": PrimaryKey,
@@ -80,6 +82,11 @@ app.config.update(
 
 
 stock_model = StockModel.load("/model/stock_lstm")
+
+
+# Load snapshot data from file
+with open("/data/snapshots.json") as f:
+    snapshots = json.load(f)
 
 
 # Database Functions
@@ -305,14 +312,16 @@ def budget_create(user_id: UserId, budget_name: str,
 
 
 @app.json_route
-def budget_update(user_id: UserId, budget_id: int, budget_name: str):
+def budget_update(user_id: UserId, budget_id: int, budget_name: str, ticker_symbol: Optional[str]):
     # Validate permissions
     if budget_permissions(budget_id, user_id) < Permissions.UPDATE:
         return {"error": "insufficient permissions"}, 403
+    if ticker_symbol is not None and ticker_symbol not in snapshots:
+        return {"error": "unrecognized ticker symbol"}, 400
     # Perform update
     db.execute("""
-        UPDATE budgets SET budget_name=%s WHERE budget_id=%s;
-    """, (budget_name, budget_id))
+        UPDATE budgets SET budget_name=%s, ticker_symbol=%s WHERE budget_id=%s;
+    """, (budget_name, ticker_symbol, budget_id))
     # Return status
     return {"status": "success"}
 
@@ -334,7 +343,7 @@ def budget_delete(user_id: UserId, budget_id: int):
 def budget_list(user_id: UserId):
     # Get list of budgets
     budgets = db.query("""
-        SELECT  budgets.budget_id, budgets.budget_name,
+        SELECT  budgets.budget_id, budgets.budget_name, ticker_symbol,
                 budgets.previous_budget_id, budgets.next_budget_id,
                 budget_permissions.permissions
         FROM budgets JOIN budget_permissions
@@ -349,8 +358,9 @@ def budget_list(user_id: UserId):
             "previous_id": previous_id,
             "next_id": next_id,
             "name": name,
-            "permissions": permissions
-        } for budget_id, name, previous_id, next_id, permissions in budgets
+            "permissions": permissions,
+            "ticker_symbol": ticker_symbol
+        } for budget_id, name, ticker_symbol, previous_id, next_id, permissions in budgets
     ]
     # Return budgets
     return {"status": "success", "budgets": budgets}
@@ -364,7 +374,7 @@ def budget_info(user_id: UserId, budget_id: int):
     # Get info
     info = db.query_one(
         """
-            SELECT budget_name, previous_budget_id,
+            SELECT budget_name, ticker_symbol, previous_budget_id,
                 next_budget_id, permissions
             FROM budgets JOIN budget_permissions
             ON budgets.budget_id=budget_permissions.budget_id
@@ -374,11 +384,12 @@ def budget_info(user_id: UserId, budget_id: int):
     )
     if info is None:
         return {"error": "budget does not exist"}, 400
-    name, previous_id, next_id, permissions = info
+    name, ticker_symbol, previous_id, next_id, permissions = info
     # Return info
     return {
         "status": "success", "name": name, "permissions": permissions,
-        "previous_id": previous_id, "next_id": next_id
+        "ticker_symbol": ticker_symbol,
+        "previous_id": previous_id, "next_id": next_id,
     }
 
 
@@ -602,16 +613,31 @@ def expense_list(user_id: UserId, budget_id: int, category_id: int):
 
 
 @app.json_route
-def model_predict_value(user_id: UserId, value: float):
-    return stock_model.predict(value)
+def symbols(user_id: UserId):
+    return {"status": "success", "symbols": list(snapshots.keys())}
 
 
 @app.json_route
-def model_predict_sequence(user_id: UserId, values: list):
+def symbol_values(user_id: UserId, ticker_symbol: str):
+    if ticker_symbol not in snapshots:
+        return {"error": "unrecognized ticker symbol"}, 400
+    return {
+        "status": "success",
+        "values": snapshots[ticker_symbol],
+        "labels": list(range(1, len(snapshots[ticker_symbol])+1))
+    }
+
+
+@app.json_route
+def model_predict(user_id: UserId, values: list):
     try:
-        return stock_model.predict_seq(values)
-    except (TypeError, ValueError):
-        return {"error": "invalid sequence"}, 400
+        return {
+            "status": "success",
+            "value": stock_model.predict(values)
+        }
+    except (TypeError, ValueError) as e:
+        raise e
+        #return {"error": "invalid sequence"}, 400
 
 
 # Start UWSGI server

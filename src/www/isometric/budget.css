@@ -81,3 +81,7 @@ span.button:active {
 .category {
     margin: 8px;
 }
+
+select, select option {
+    color: black;
+}

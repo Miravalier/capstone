@@ -64,14 +64,22 @@ class StockModel:
         else:
             raise TypeError("Training input must be 1D or 2D with this model")
 
-    def predict(self, input_value):
-        scaled_output = self.model.predict(shape_3d(input_value), batch_size=1)
-        return shape_0d(self.scaler.regrow(scaled_output))
+    def predict(self, input_sequence):
+        # Convert the inputs to differences
+        differences = []
+        for i in range(1, len(input_sequence)):
+            differences.append(input_sequence[i] - input_sequence[i - 1])
 
-    def predict_seq(self, input_sequence):
-        for input_value in input_sequence:
+        # Scale the inputs down
+        self.scaler.fit(differences)
+        scaled_values = self.scaler.shrink(differences)
+
+        # Make predictions
+        for input_value in scaled_values:
             scaled_output = self.model.predict(shape_3d(input_value), batch_size=1)
-        return shape_0d(self.scaler.regrow(scaled_output))
+
+        # Return the rescaled output
+        return input_sequence[-1] + shape_0d(self.scaler.regrow(scaled_output))
 
 
 class PreservedScaler:
@@ -154,7 +162,7 @@ def perform_test(args):
     with open("data/snapshots.json") as f:
         snapshots = json.load(f)
 
-    # Take the difference at each timestep (~30 days)
+    # Take the difference at each timestep
     data = []
     for values in snapshots.values():
         datum = []
@@ -221,7 +229,7 @@ def create_model(args):
     with open("data/snapshots.json") as f:
         snapshots = json.load(f)
 
-    # Take the difference at each timestep (~30 days)
+    # Take the difference at each timestep
     data = []
     for values in snapshots.values():
         datum = []

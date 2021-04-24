@@ -25,21 +25,32 @@ def get_stock_data(symbol: str, day: date):
 
 def main():
     parser = ArgumentParser()
-    parser.add_argument("-c", "--count", type=int, default=5, help="Number of different symbols to query.")
+    parser.add_argument("-c", "--count", type=int, default=None, help="Number of different symbols to query.")
     parser.add_argument("-d", "--days", type=int, default=1825, help="Days back to start querying.")
+    parser.add_argument("-s", "--symbol", type=str, default=None, help="Specific symbol to query.")
+    parser.add_argument("-o", "--output", type=str, default=OUTPUT_PATH, help="JSON output path.")
     args = parser.parse_args()
 
-    with open(INPUT_PATH) as f:
-        all_symbols = [datum['Symbol'] for datum in json.load(f)]
+    if args.symbol is not None and args.count is not None:
+        parser.error("--count and --symbol are mutually exclusive")
 
-    symbols = set()
-    while len(symbols) < args.count:
-        added_symbols = random.sample(all_symbols, args.count - len(symbols))
-        for symbol in added_symbols:
-            stock_data = get_stock_data(symbol, date(2015, 6, 1))
-            print(stock_data)
-            if stock_data['status'] == 'OK':
-                symbols.add(symbol)
+    if args.symbol is None:
+        if args.count is None:
+            args.count = 5
+
+        with open(INPUT_PATH) as f:
+            all_symbols = [datum['Symbol'] for datum in json.load(f)]
+
+        symbols = set()
+        while len(symbols) < args.count:
+            added_symbols = random.sample(all_symbols, args.count - len(symbols))
+            for symbol in added_symbols:
+                stock_data = get_stock_data(symbol, date(2015, 6, 1))
+                print(stock_data)
+                if stock_data['status'] == 'OK':
+                    symbols.add(symbol)
+    else:
+        symbols = {args.symbol}
 
     today = date.today()
     data = {}
@@ -65,7 +76,7 @@ def main():
             day += timedelta(days=30)
         data[symbol] = symbol_snapshots
 
-    with open(OUTPUT_PATH, "w") as f:
+    with open(args.output, "w") as f:
         json.dump(data, f)
 
 

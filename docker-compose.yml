@@ -16,3 +16,4 @@ services:
         volumes:
             - /var/run/postgresql:/var/run/postgresql
             - ./appdata/model:/model
+            - ./data:/data

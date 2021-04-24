@@ -27,6 +27,12 @@ body {
     margin: 8px;
 }
 
+.stock-chart {
+    height: 16em;
+    width: 100%;
+    margin: 8px;
+}
+
 canvas {
     background: white;
     padding: 4px;
