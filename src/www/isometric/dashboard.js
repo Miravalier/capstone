@@ -10,7 +10,7 @@ function moneyLabel(label, value) {
         'en-US',
         { style: 'currency', currency: 'USD' }
     ).format(value);
-    return `${label}: ${formattedValue}`;
+    return `${label}: ${formattedValue}k`;
 }
 
 
@@ -23,9 +23,12 @@ async function generatePieChart() {
     const categories = await g_budget.categories();
     for (const category of categories) {
         categoryNames.push(category.name);
-        categoryAmounts.push(await category.total());
+        categoryAmounts.push((await category.total())/1000);
         categoryColors.push(await deriveColor(category.name));
     }
+
+    console.log("Pie Chart Data");
+    console.log(categories);
 
     // Render chart
     const pieChart = new Chart(
@@ -124,7 +127,7 @@ async function generateLineGraph() {
     const categories = await g_budget.categories();
     for (const category of categories) {
         categoryData[category.name] = {
-            values: [await category.total()],
+            values: [(await category.total())/1000],
             color: await deriveColor(category.name)
         }
     }
@@ -140,7 +143,7 @@ async function generateLineGraph() {
             if (missingCategories.has(category.name))
             {
                 missingCategories.delete(category.name);
-                categoryData[category.name].values.unshift(await category.total());
+                categoryData[category.name].values.unshift((await category.total()) / 1000);
             }
         }
         for (const name of missingCategories)
@@ -162,7 +165,7 @@ async function generateLineGraph() {
             if (missingCategories.has(category.name))
             {
                 missingCategories.delete(category.name);
-                categoryData[category.name].values.push(await category.total());
+                categoryData[category.name].values.push((await category.total()) / 1000);
             }
         }
         for (const name of missingCategories)
@@ -185,6 +188,9 @@ async function generateLineGraph() {
             tension: 0.1
         });
     }
+
+    console.log("Line Graph Data");
+    console.log(categoryData);
 
     // Render chart
     const lineGraph = new Chart(
@@ -220,9 +226,12 @@ async function generateBarGraph() {
     const categories = await g_budget.categories();
     for (const category of categories) {
         categoryNames.push(category.name);
-        categoryAmounts.push(await category.total());
+        categoryAmounts.push((await category.total()) / 1000);
         categoryColors.push(await deriveColor(category.name));
     }
+
+    console.log("Bar Graph Data");
+    console.log(categories);
 
     // Render chart
     const barGraph = new Chart(
@@ -278,5 +287,9 @@ $(async () => {
     generatePieChart();
     generateLineGraph();
     generateBarGraph();
-    generateStockGraph();
+
+    if (g_budget.ticker_symbol)
+    {
+        generateStockGraph();
+    }
 });

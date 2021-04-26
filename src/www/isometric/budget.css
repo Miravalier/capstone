@@ -67,11 +67,11 @@ span.button:active {
 }
 
 .expense .description {
-    width: 10em;
+    width: 12em;
 }
 
 .expense .amount {
-    width: 5em;
+    width: 8em;
 }
 
 .expense .date {

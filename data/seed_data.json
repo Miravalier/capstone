@@ -1,0 +1,25 @@
+{
+    "total": 2000000,
+    "percentages": {
+        "Payroll": 42.7,
+        "Equipment": 0.5,
+        "Parts and Supplies": 1.7,
+        "Communication Services": 0.7,
+        "Electricity": 2.0,
+        "Other Utility": 0.4,
+        "Advertising": 5.4,
+        "Taxes and License Fees": 2.1,
+        "Other Expenses": 10.8
+    },
+    "items": {
+        "Payroll": ["Executives", "Programmers", "Artists", "Marketing"],
+        "Equipment": ["Desktop Computers", "Servers", "Network Equipment"],
+        "Parts and Supplies": ["Office Supplies"],
+        "Communication Services": ["Telephones", "IM Software", "Email Services"],
+        "Electricity": ["Electricity"],
+        "Other Utility": ["Water", "Sewage", "Trash Services"],
+        "Advertising": ["Google AdWords", "Local Ads"],
+        "Taxes and License Fees": ["Taxes", "Certifications"],
+        "Other Expenses": ["Legal Services"]
+    }
+}

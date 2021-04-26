@@ -345,7 +345,7 @@ export class Expense {
     }
 
     get value() {
-        return Number(this._amount.substring(1));
+        return Number(this._amount.substring(1).replaceAll(',', ''));
     }
 
     get date() {
