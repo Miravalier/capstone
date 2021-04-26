@@ -27,9 +27,6 @@ async function generatePieChart() {
         categoryColors.push(await deriveColor(category.name));
     }
 
-    console.log("Pie Chart Data");
-    console.log(categories);
-
     // Render chart
     const pieChart = new Chart(
         document.getElementById('pieChart').getContext('2d'),
@@ -189,9 +186,6 @@ async function generateLineGraph() {
         });
     }
 
-    console.log("Line Graph Data");
-    console.log(categoryData);
-
     // Render chart
     const lineGraph = new Chart(
         document.getElementById('lineGraph').getContext('2d'),
@@ -229,9 +223,6 @@ async function generateBarGraph() {
         categoryAmounts.push((await category.total()) / 1000);
         categoryColors.push(await deriveColor(category.name));
     }
-
-    console.log("Bar Graph Data");
-    console.log(categories);
 
     // Render chart
     const barGraph = new Chart(
