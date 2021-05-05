@@ -64,6 +64,30 @@ class StockModel:
         else:
             raise TypeError("Training input must be 1D or 2D with this model")
 
+    def predict_verbose(self, input_sequence):
+        # Convert the inputs to differences
+        differences = []
+        for i in range(1, len(input_sequence)):
+            differences.append(input_sequence[i] - input_sequence[i - 1])
+
+        # Scale the inputs down
+        self.scaler.fit(differences)
+        scaled_values = self.scaler.shrink(differences)
+
+        # Make predictions
+        expectations = scaled_values[1:]
+        predictions = []
+        for input_value in scaled_values[:-1]:
+            scaled_output = self.model.predict(shape_3d(input_value), batch_size=1)
+            predictions.append(shape_0d(scaled_output))
+
+        # Scale the inputs and outputs up
+        expectations = self.scaler.regrow(expectations)
+        predictions = self.scaler.regrow(predictions)
+
+        # Return the expected values and predictions made
+        return predictions, expectations
+
     def predict(self, input_sequence):
         # Convert the inputs to differences
         differences = []
@@ -83,7 +107,7 @@ class StockModel:
 
 
 class PreservedScaler:
-    def __init__(self, arr=None, *, feature_range=(-1,1)):
+    def __init__(self, arr=None, *, feature_range=(0,1)):
         self.scaler = MinMaxScaler(feature_range=feature_range)
         if arr is not None:
             self.fit(arr)
@@ -202,25 +226,14 @@ def perform_test(args):
     print("Making predictions.")
     print("-------------------")
 
-    # Make predictions
+    # Gather predictions and expectations for each sample
     predictions = []
     expectations = []
+    for input_sample in testing_input:
+        sub_predictions, sub_expectations = model.predict_verbose(input_sample)
+        predictions.extend(sub_predictions)
+        expectations.extend(sub_expectations)
 
-    for i, input_sample in enumerate(testing_input):
-        # Shape the testing input and output to simple arrays for iterating over
-        input_sample = shape_1d(input_sample)
-        output_sample = shape_1d(testing_output[i])
-
-        # Make predictions
-        for j, value in enumerate(input_sample):
-            predictions.append(model.predict(value))
-            expectations.append(output_sample[j])
-
-    # Compare the predictions to the expected outputs for accuracy
-    print("Prediction Directions:")
-    display_directions(predictions)
-    print("Expectation Directions:")
-    display_directions(expectations)
     print("RMSE: ", mean_squared_error(expectations, predictions) ** 0.5)
 
 
